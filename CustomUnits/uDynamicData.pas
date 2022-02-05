@@ -23,7 +23,7 @@ type
     DataType: Integer;
 
     DataInt: Int64;
-    DataFloat: Extended;
+    DataFloat: Double;
     DataString: WideString;
 
     ArrayOfByte: TArrayOfByte;
@@ -56,8 +56,19 @@ type
       procedure ClearValue(Index, SubIndex: Integer);
       procedure DeleteValue(Index: Integer; Name: WideString);
 
+      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte); overload;
+      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt); overload;
+      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat); overload;
+      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString); overload;
+
+      function GetValueArrayByte(Index: Integer; Name: WideString): TArrayOfByte;
+      function GetValueArrayInt(Index: Integer; Name: WideString): TArrayOfInt;
+      function GetValueArrayFloat(Index: Integer; Name: WideString): TArrayOfFloat;
+      function GetValueArrayString(Index: Integer; Name: WideString): TArrayOfString;
+
       function CreateData(Index: Integer): Integer;
       procedure DeleteData(Index: Integer);
+      procedure ResetData;
     private
       procedure RemoveUnused(Index: Integer);
       procedure RemoveUnusedAtIndex(idx1, idx2: Integer);
@@ -264,13 +275,6 @@ begin
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
-      case self.DynamicData[Index][i].DataType of
-        varArrayOfByte: begin Result := self.DynamicData[Index][i].ArrayOfByte; Exit end;
-        varArrayOfInt: begin Result := self.DynamicData[Index][i].ArrayOfInt; Exit end;
-        varArrayOfFloat: begin Result := self.DynamicData[Index][i].ArrayOfFloat; Exit end;
-        varArrayOfString: begin Result := self.DynamicData[Index][i].ArrayOfString; Exit end;
-      end;
-
       case self.DynamicData[Index][i].DataType and VarTypeMask of
         varSmallInt: Result := SmallInt(self.DynamicData[Index][i].DataInt);
         varInteger: Result := Integer(self.DynamicData[Index][i].DataInt);
@@ -283,7 +287,7 @@ begin
 
         varSingle: Result := self.DynamicData[Index][i].DataFloat;
         varDouble: Result := self.DynamicData[Index][i].DataFloat;
-        varDate: Result := self.DynamicData[Index][i].DataFloat;
+        varDate: Result := TDateTime(self.DynamicData[Index][i].DataFloat);
         varCurrency: Result := self.DynamicData[Index][i].DataFloat;
 
         varOleStr: Result := WideString(self.DynamicData[Index][i].DataString);
@@ -313,13 +317,6 @@ begin
   ClearValue(Index, i);
   self.DynamicData[Index][i].DataType := VarType(Value);
 
-  case VarType(Value) of
-    varArrayOfByte: begin self.DynamicData[Index][i].ArrayOfByte := Value; Exit end;
-    varArrayOfInt: begin self.DynamicData[Index][i].ArrayOfInt := Value; Exit end;
-    varArrayOfFloat: begin self.DynamicData[Index][i].ArrayOfFloat := Value; Exit end;
-    varArrayOfString: begin self.DynamicData[Index][i].ArrayOfString := Value; Exit end;
-  end;
-
   case VarType(Value) and VarTypeMask of
     varSmallInt: self.DynamicData[Index][i].DataInt := Value;
     varInteger: self.DynamicData[Index][i].DataInt := Value;
@@ -337,6 +334,150 @@ begin
 
     varOleStr: self.DynamicData[Index][i].DataString := Value;
     varString: self.DynamicData[Index][i].DataString := Value;
+  end;
+end;
+
+
+procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
+var
+  i, l: Integer;
+begin
+  if Index >= Length(self.DynamicData) then Exit;
+  l := Length(self.DynamicData[Index]);
+
+  for i := 0 to l do begin
+    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
+  end;
+
+  if i >= l then i := i-1;
+  self.DynamicData[Index][i].Name := Name;
+  ClearValue(Index, i);
+  self.DynamicData[Index][i].DataType := 0;
+  self.DynamicData[Index][i].ArrayOfByte := ArrayOfByte;
+end;
+
+
+procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt);
+var
+  i, l: Integer;
+begin
+  if Index >= Length(self.DynamicData) then Exit;
+  l := Length(self.DynamicData[Index]);
+
+  for i := 0 to l do begin
+    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
+  end;
+
+  if i >= l then i := i-1;
+  self.DynamicData[Index][i].Name := Name;
+  ClearValue(Index, i);
+  self.DynamicData[Index][i].DataType := 0;
+  self.DynamicData[Index][i].ArrayOfInt := ArrayOfInt;
+end;
+
+
+procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat);
+var
+  i, l: Integer;
+begin
+  if Index >= Length(self.DynamicData) then Exit;
+  l := Length(self.DynamicData[Index]);
+
+  for i := 0 to l do begin
+    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
+  end;
+
+  if i >= l then i := i-1;
+  self.DynamicData[Index][i].Name := Name;
+  ClearValue(Index, i);
+  self.DynamicData[Index][i].DataType := 0;
+  self.DynamicData[Index][i].ArrayOfFloat := ArrayOfFloat;
+end;
+
+
+procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString);
+var
+  i, l: Integer;
+begin
+  if Index >= Length(self.DynamicData) then Exit;
+  l := Length(self.DynamicData[Index]);
+
+  for i := 0 to l do begin
+    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
+  end;
+
+  if i >= l then i := i-1;
+  self.DynamicData[Index][i].Name := Name;
+  ClearValue(Index, i);
+  self.DynamicData[Index][i].DataType := 0;
+  self.DynamicData[Index][i].ArrayOfString := ArrayOfString;
+end;
+
+
+function TDynamicData.GetValueArrayByte(Index: Integer; Name: WideString): TArrayOfByte;
+var
+  i: Integer;
+begin
+  Result := nil;
+  if Index >= Length(self.DynamicData) then Exit;
+
+  for i := 0 to Length(self.DynamicData[Index])-1 do begin
+    if self.DynamicData[Index][i].Name = Name then begin
+      Result := self.DynamicData[Index][i].ArrayOfByte;
+      Break;
+    end;
+  end;
+end;
+
+
+function TDynamicData.GetValueArrayInt(Index: Integer; Name: WideString): TArrayOfInt;
+var
+  i: Integer;
+begin
+  Result := nil;
+  if Index >= Length(self.DynamicData) then Exit;
+
+  for i := 0 to Length(self.DynamicData[Index])-1 do begin
+    if self.DynamicData[Index][i].Name = Name then begin
+      Result := self.DynamicData[Index][i].ArrayOfInt;
+      Break;
+    end;
+  end;
+end;
+
+
+function TDynamicData.GetValueArrayFloat(Index: Integer; Name: WideString): TArrayOfFloat;
+var
+  i: Integer;
+begin
+  Result := nil;
+  if Index >= Length(self.DynamicData) then Exit;
+
+  for i := 0 to Length(self.DynamicData[Index])-1 do begin
+    if self.DynamicData[Index][i].Name = Name then begin
+      Result := self.DynamicData[Index][i].ArrayOfFloat;
+      Break;
+    end;
+  end;
+end;
+
+
+function TDynamicData.GetValueArrayString(Index: Integer; Name: WideString): TArrayOfString;
+var
+  i: Integer;
+begin
+  Result := nil;
+  if Index >= Length(self.DynamicData) then Exit;
+
+  for i := 0 to Length(self.DynamicData[Index])-1 do begin
+    if self.DynamicData[Index][i].Name = Name then begin
+      Result := self.DynamicData[Index][i].ArrayOfString;
+      Break;
+    end;
   end;
 end;
 
@@ -395,8 +536,6 @@ procedure TDynamicData.DeleteData(Index: Integer);
 var
   i: Integer;
 begin
-  SetLength(self.DynamicData, Length(self.DynamicData)+1);
-
   if (Index = Length(self.DynamicData)-1) then begin
     SetLength(self.DynamicData, Length(self.DynamicData)-1);
     Exit;
@@ -407,6 +546,12 @@ begin
   end;
 
   SetLength(self.DynamicData, Length(self.DynamicData)-1);
+end;
+
+
+procedure TDynamicData.ResetData;
+begin
+  SetLength(self.DynamicData, 0);
 end;
 
 
