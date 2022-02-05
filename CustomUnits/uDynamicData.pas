@@ -50,6 +50,7 @@ type
       procedure Save(ROOT_KEY: DWORD; KEY, Value: String); overload;
       procedure Save(FileName: WideString); overload;
       function GetLength: Integer;
+      procedure SetLength(len: Integer);
 
       function GetValue(Index: Integer; Name: WideString): Variant;
       procedure SetValue(Index: Integer; Name: WideString; Value: Variant);
@@ -83,7 +84,7 @@ begin
   inherited Create;
   self.doCompress := doCompress;
   self.doRemoveUnsued := doRemoveUnsued;
-  SetLength(self.DynamicValues, Length(DynamicValues));
+  System.SetLength(self.DynamicValues, Length(DynamicValues));
 
   lOptions := [
     kdoAnsiStringCodePage
@@ -106,7 +107,7 @@ end;
 destructor TDynamicData.Destroy;
 begin
   ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-  SetLength(self.DynamicData, 0);
+  System.SetLength(self.DynamicData, 0);
   inherited Destroy;
 end;
 
@@ -118,7 +119,7 @@ begin
   ArrayLength := Length(self.DynamicData[idx1]);
 
   if idx2 = ArrayLength-1 then begin
-    SetLength(self.DynamicData[idx1], ArrayLength-1);
+    System.SetLength(self.DynamicData[idx1], ArrayLength-1);
     Exit;
   end;
 
@@ -126,7 +127,7 @@ begin
     self.DynamicData[idx1][idx2] := self.DynamicData[idx1][idx2+1];
   end;
 
-  SetLength(self.DynamicData[idx1], ArrayLength-1);
+  System.SetLength(self.DynamicData[idx1], ArrayLength-1);
 end;
 
 procedure TDynamicData.RemoveUnused(Index: Integer);
@@ -178,7 +179,7 @@ begin
       PlaySound('SystemExclamation', 0, SND_ASYNC);
       ShowMessage('There was an error loading data.');
       ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-      SetLength(self.DynamicData, 0);
+      System.SetLength(self.DynamicData, 0);
       if onFailDelete then Registry.DeleteValue(Value);
     end;
   end;
@@ -212,7 +213,7 @@ begin
       PlaySound('SystemExclamation', 0, SND_ASYNC);
       ShowMessage('There was an error loading data.');
       ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-      SetLength(self.DynamicData, 0);
+      System.SetLength(self.DynamicData, 0);
       if onFailDelete then DeleteFileW(PWideChar(FileName));
     end;
   end;
@@ -266,37 +267,9 @@ begin
 end;
 
 
-function TDynamicData.GetValue(Index: Integer; Name: WideString): Variant;
-var
-  i: Integer;
+procedure TDynamicData.SetLength(len: Integer);
 begin
-  Result := Null;
-  if Index >= Length(self.DynamicData) then Exit;
-
-  for i := 0 to Length(self.DynamicData[Index])-1 do begin
-    if self.DynamicData[Index][i].Name = Name then begin
-      case self.DynamicData[Index][i].DataType and VarTypeMask of
-        varSmallInt: Result := SmallInt(self.DynamicData[Index][i].DataInt);
-        varInteger: Result := Integer(self.DynamicData[Index][i].DataInt);
-        varBoolean: Result := Boolean(self.DynamicData[Index][i].DataInt);
-        varByte: Result := Byte(self.DynamicData[Index][i].DataInt);
-        varWord: Result := Word(self.DynamicData[Index][i].DataInt);
-        varLongWord: Result := LongWord(self.DynamicData[Index][i].DataInt);
-        varShortInt: Result := ShortInt(self.DynamicData[Index][i].DataInt);
-        varInt64: Result := Int64(self.DynamicData[Index][i].DataInt);
-
-        varSingle: Result := self.DynamicData[Index][i].DataFloat;
-        varDouble: Result := self.DynamicData[Index][i].DataFloat;
-        varDate: Result := TDateTime(self.DynamicData[Index][i].DataFloat);
-        varCurrency: Result := self.DynamicData[Index][i].DataFloat;
-
-        varOleStr: Result := WideString(self.DynamicData[Index][i].DataString);
-        varString: Result := String(self.DynamicData[Index][i].DataString);
-      end;
-
-      Break;
-    end;
-  end;
+  System.SetLength(self.DynamicData, len);
 end;
 
 
@@ -308,7 +281,7 @@ begin
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
-    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if i = l then System.SetLength(self.DynamicData[Index], i+1);
     if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
   end;
 
@@ -338,6 +311,40 @@ begin
 end;
 
 
+function TDynamicData.GetValue(Index: Integer; Name: WideString): Variant;
+var
+  i: Integer;
+begin
+  Result := Null;
+  if Index >= Length(self.DynamicData) then Exit;
+
+  for i := 0 to Length(self.DynamicData[Index])-1 do begin
+    if self.DynamicData[Index][i].Name = Name then begin
+      case self.DynamicData[Index][i].DataType and VarTypeMask of
+        varSmallInt: Result := SmallInt(self.DynamicData[Index][i].DataInt);
+        varInteger: Result := Integer(self.DynamicData[Index][i].DataInt);
+        varBoolean: Result := Boolean(self.DynamicData[Index][i].DataInt);
+        varByte: Result := Byte(self.DynamicData[Index][i].DataInt);
+        varWord: Result := Word(self.DynamicData[Index][i].DataInt);
+        varLongWord: Result := LongWord(self.DynamicData[Index][i].DataInt);
+        varShortInt: Result := ShortInt(self.DynamicData[Index][i].DataInt);
+        varInt64: Result := self.DynamicData[Index][i].DataInt;
+
+        varSingle: Result := self.DynamicData[Index][i].DataFloat;
+        varDouble: Result := self.DynamicData[Index][i].DataFloat;
+        varDate: Result := TDateTime(self.DynamicData[Index][i].DataFloat);
+        varCurrency: Result := self.DynamicData[Index][i].DataFloat;
+
+        varOleStr: Result := WideString(self.DynamicData[Index][i].DataString);
+        varString: Result := String(self.DynamicData[Index][i].DataString);
+      end;
+
+      Break;
+    end;
+  end;
+end;
+
+
 procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
 var
   i, l: Integer;
@@ -346,7 +353,7 @@ begin
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
-    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if i = l then System.SetLength(self.DynamicData[Index], i+1);
     if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
   end;
 
@@ -366,7 +373,7 @@ begin
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
-    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if i = l then System.SetLength(self.DynamicData[Index], i+1);
     if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
   end;
 
@@ -386,7 +393,7 @@ begin
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
-    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if i = l then System.SetLength(self.DynamicData[Index], i+1);
     if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
   end;
 
@@ -406,7 +413,7 @@ begin
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
-    if i = l then SetLength(self.DynamicData[Index], i+1);
+    if i = l then System.SetLength(self.DynamicData[Index], i+1);
     if (i < l) and (self.DynamicData[Index][i].Name = Name) then Break;
   end;
 
@@ -490,10 +497,10 @@ begin
   self.DynamicData[Index][SubIndex].DataFloat := 0;
   self.DynamicData[Index][SubIndex].DataString := '';
 
-  SetLength(self.DynamicData[Index][SubIndex].ArrayOfByte, 0);
-  SetLength(self.DynamicData[Index][SubIndex].ArrayOfInt, 0);
-  SetLength(self.DynamicData[Index][SubIndex].ArrayOfFloat, 0);
-  SetLength(self.DynamicData[Index][SubIndex].ArrayOfString, 0);
+  System.SetLength(self.DynamicData[Index][SubIndex].ArrayOfByte, 0);
+  System.SetLength(self.DynamicData[Index][SubIndex].ArrayOfInt, 0);
+  System.SetLength(self.DynamicData[Index][SubIndex].ArrayOfFloat, 0);
+  System.SetLength(self.DynamicData[Index][SubIndex].ArrayOfString, 0);
 end;
 
 
@@ -516,7 +523,7 @@ function TDynamicData.CreateData(Index: Integer): Integer;
 var
   i: Integer;
 begin
-  SetLength(self.DynamicData, Length(self.DynamicData)+1);
+  System.SetLength(self.DynamicData, Length(self.DynamicData)+1);
 
   if (Index = -1) then begin
     Result := Length(self.DynamicData)-1;
@@ -528,7 +535,7 @@ begin
   end;
 
   Result := Index;
-  SetLength(self.DynamicData[Index], 0);
+  System.SetLength(self.DynamicData[Index], 0);
 end;
 
 
@@ -537,7 +544,7 @@ var
   i: Integer;
 begin
   if (Index = Length(self.DynamicData)-1) then begin
-    SetLength(self.DynamicData, Length(self.DynamicData)-1);
+    System.SetLength(self.DynamicData, Length(self.DynamicData)-1);
     Exit;
   end;
 
@@ -545,13 +552,13 @@ begin
     self.DynamicData[i] := self.DynamicData[i+1];
   end;
 
-  SetLength(self.DynamicData, Length(self.DynamicData)-1);
+  System.SetLength(self.DynamicData, Length(self.DynamicData)-1);
 end;
 
 
 procedure TDynamicData.ResetData;
 begin
-  SetLength(self.DynamicData, 0);
+  System.SetLength(self.DynamicData, 0);
 end;
 
 
