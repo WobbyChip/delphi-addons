@@ -47,10 +47,13 @@ type
       destructor Destroy; override;
       function Load(ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean; overload;
       function Load(FileName: WideString; onFailDelete: Boolean): Boolean; overload;
+      function Load(MemoryStream: TMemoryStream): Boolean; overload;
       procedure Save(ROOT_KEY: DWORD; KEY, Value: String); overload;
       procedure Save(FileName: WideString); overload;
+      procedure Save(MemoryStream: TMemoryStream); overload;
       function GetLength: Integer;
       procedure SetLength(len: Integer);
+      function CountMemory: Int64;
 
       function GetValue(Index: Integer; Name: WideString): Variant;
       procedure SetValue(Index: Integer; Name: WideString; Value: Variant);
@@ -229,6 +232,36 @@ begin
 end;
 
 
+function TDynamicData.Load(MemoryStream: TMemoryStream): Boolean;
+var
+  i: Integer;
+begin
+  Result := True;
+
+  if MemoryStream.Size > 0 then begin
+    try
+      MemoryStream.Position := 0;
+      if doCompress then DecompressStream(MemoryStream);
+      TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
+      MemoryStream.Position := 0;
+    except
+      Result := False;
+      PlaySound('SystemExclamation', 0, SND_ASYNC);
+      ShowMessage('There was an error loading data.');
+      ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
+      System.SetLength(self.DynamicData, 0);
+    end;
+  end;
+
+  //Clear non used values
+  if doRemoveUnsued then begin
+    for i := 0 to Length(self.DynamicData)-1 do begin
+      RemoveUnused(i);
+    end;
+  end;
+end;
+
+
 procedure TDynamicData.Save(ROOT_KEY: DWORD; KEY, Value: String);
 var
   MemoryStream: TMemoryStream;
@@ -246,6 +279,15 @@ begin
   Registry.Free;
 
   MemoryStream.Free;
+end;
+
+
+procedure TDynamicData.Save(MemoryStream: TMemoryStream);
+begin
+  MemoryStream.Position := 0;
+  TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
+  if doCompress then CompressStream(MemoryStream);
+  MemoryStream.Position := 0;
 end;
 
 
@@ -270,6 +312,33 @@ end;
 procedure TDynamicData.SetLength(len: Integer);
 begin
   System.SetLength(self.DynamicData, len);
+end;
+
+
+function TDynamicData.CountMemory: Int64;
+var
+  i, j, k: Integer;
+begin
+  Result := 0;
+
+  for i := 0 to Length(self.DynamicData)-1 do begin
+    for j := 0 to Length(self.DynamicData[i])-1 do begin
+      Result := Result + Length(self.DynamicData[i][j].Name) * SizeOf(WideChar);
+      Result := Result + SizeOf(self.DynamicData[i][j].DataType);
+
+      Result := Result + SizeOf(self.DynamicData[i][j].DataInt);
+      Result := Result + SizeOf(self.DynamicData[i][j].DataFloat);
+      Result := Result + Length(self.DynamicData[i][j].DataString) * SizeOf(WideChar);
+
+      Result := Result + Length(self.DynamicData[i][j].ArrayOfByte) * SizeOf(Byte);
+      Result := Result + Length(self.DynamicData[i][j].ArrayOfInt) * SizeOf(Int64);
+      Result := Result + Length(self.DynamicData[i][j].ArrayOfFloat) * SizeOf(Double);
+
+      for k := 0 to Length(self.DynamicData[i][j].ArrayOfString)-1 do begin
+        Result := Result + Length(self.DynamicData[i][j].ArrayOfString[k]) * SizeOf(WideChar);
+      end;
+    end;
+  end;
 end;
 
 
