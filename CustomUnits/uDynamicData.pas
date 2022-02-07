@@ -45,18 +45,22 @@ type
 
       constructor Create(doCompress, doRemoveUnsued: Boolean; DynamicValues: array of WideString);
       destructor Destroy; override;
+
       function Load(ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean; overload;
       function Load(FileName: WideString; onFailDelete: Boolean): Boolean; overload;
       function Load(MemoryStream: TMemoryStream): Boolean; overload;
       procedure Save(ROOT_KEY: DWORD; KEY, Value: String); overload;
       procedure Save(FileName: WideString); overload;
       procedure Save(MemoryStream: TMemoryStream); overload;
+
       function GetLength: Integer;
       procedure SetLength(len: Integer);
       function CountMemory: Int64;
 
-      function GetValue(Index: Integer; Name: WideString): Variant;
+      function FindIndex(Name: WideString; Value: Variant): Integer;
+
       procedure SetValue(Index: Integer; Name: WideString; Value: Variant);
+      function GetValue(Index: Integer; Name: WideString): Variant;
       procedure ClearValue(Index, SubIndex: Integer);
       procedure DeleteValue(Index: Integer; Name: WideString);
 
@@ -341,6 +345,19 @@ begin
   end;
 end;
 
+
+function TDynamicData.FindIndex(Name: WideString; Value: Variant): Integer;
+var
+  i, j, k: Integer;
+  v: Variant;
+begin
+  Result := -1;
+
+  for i := 0 to Length(self.DynamicData)-1 do begin
+    v := self.GetValue(i, Name);
+    if v = Value then begin Result := i; Break; end;
+  end;
+end;
 
 procedure TDynamicData.SetValue(Index: Integer; Name: WideString; Value: Variant);
 var
