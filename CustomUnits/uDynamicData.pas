@@ -5,12 +5,6 @@ interface
 uses
   Windows, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
 
-const
-  varArrayOfByte = 8209;
-  varArrayOfInt = 8195;
-  varArrayOfFloat = 8197;
-  varArrayOfString = 8200;
-
 type
   TArrayOfByte = array of Byte;
   TArrayOfInt = array of Integer;
