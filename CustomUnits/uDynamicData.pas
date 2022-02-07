@@ -37,25 +37,23 @@ type
 type
   TDynamicData = class
     public
-      doCompress: Boolean;
-      doRemoveUnsued: Boolean;
       lOptions: TKBDynamicOptions;
-      DynamicValues: array of WideString;
+      DynamicKeys: array of WideString;
       DynamicData: TDynamicList_;
 
-      constructor Create(doCompress, doRemoveUnsued: Boolean; DynamicValues: array of WideString);
+      constructor Create(DynamicKeys: array of WideString);
       destructor Destroy; override;
 
-      function Load(ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean; overload;
-      function Load(FileName: WideString; onFailDelete: Boolean): Boolean; overload;
-      function Load(MemoryStream: TMemoryStream): Boolean; overload;
-      procedure Save(ROOT_KEY: DWORD; KEY, Value: String); overload;
-      procedure Save(FileName: WideString); overload;
-      procedure Save(MemoryStream: TMemoryStream); overload;
+      function Load(bCompress, bUnused: Boolean; ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean; overload;
+      function Load(bCompress, bUnused: Boolean; FileName: WideString; onFailDelete: Boolean): Boolean; overload;
+      function Load(bCompress, bUnused: Boolean; MemoryStream: TMemoryStream): Boolean; overload;
+      procedure Save(bCompress: Boolean; ROOT_KEY: DWORD; KEY, Value: String); overload;
+      procedure Save(bCompress: Boolean; FileName: WideString); overload;
+      procedure Save(bCompress: Boolean; MemoryStream: TMemoryStream); overload;
 
       function GetLength: Integer;
       procedure SetLength(len: Integer);
-      function CountMemory: Int64;
+      function GetSize: Int64;
 
       function FindIndex(Name: WideString; Value: Variant): Integer;
 
@@ -84,14 +82,12 @@ type
 
 implementation
 
-constructor TDynamicData.Create(doCompress, doRemoveUnsued: Boolean; DynamicValues: array of WideString);
+constructor TDynamicData.Create(DynamicKeys: array of WideString);
 var
   i: Integer;
 begin
   inherited Create;
-  self.doCompress := doCompress;
-  self.doRemoveUnsued := doRemoveUnsued;
-  System.SetLength(self.DynamicValues, Length(DynamicValues));
+  System.SetLength(self.DynamicKeys, Length(DynamicKeys));
 
   lOptions := [
     kdoAnsiStringCodePage
@@ -105,8 +101,8 @@ begin
     {$ENDIF}
   ];
 
-  for i := 0 to Length(DynamicValues)-1 do begin
-    self.DynamicValues[i] := DynamicValues[i];
+  for i := 0 to Length(DynamicKeys)-1 do begin
+    self.DynamicKeys[i] := DynamicKeys[i];
   end;
 end;
 
@@ -147,8 +143,8 @@ begin
     S := self.DynamicData[Index][j].Name;
     b := False;
 
-    for l := 0 to Length(self.DynamicValues)-1 do begin
-      b := (S = self.DynamicValues[l]);
+    for l := 0 to Length(self.DynamicKeys)-1 do begin
+      b := (S = self.DynamicKeys[l]);
       if b then Break;
     end;
 
@@ -161,7 +157,7 @@ begin
 end;
 
 
-function TDynamicData.Load(ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean;
+function TDynamicData.Load(bCompress, bUnused: Boolean; ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean;
 var
   MemoryStream: TMemoryStream;
   Registry: TRegistry;
@@ -178,7 +174,7 @@ begin
     Registry.ReadBinaryData(Value, MemoryStream.Memory^, MemoryStream.Size);
 
     try
-      if doCompress then DecompressStream(MemoryStream);
+      if bCompress then DecompressStream(MemoryStream);
       TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
       MemoryStream.Free;
     except
@@ -194,7 +190,7 @@ begin
   Registry.Free;
 
   //Clear non used values
-  if doRemoveUnsued then begin
+  if bUnused then begin
     for i := 0 to Length(self.DynamicData)-1 do begin
       RemoveUnused(i);
     end;
@@ -202,7 +198,7 @@ begin
 end;
 
 
-function TDynamicData.Load(FileName: WideString; onFailDelete: Boolean): Boolean;
+function TDynamicData.Load(bCompress, bUnused: Boolean; FileName: WideString; onFailDelete: Boolean): Boolean;
 var
   MemoryStream: TMemoryStream;
   i: Integer;
@@ -213,7 +209,7 @@ begin
 
   if MemoryStream.Size > 0 then begin
     try
-      if doCompress then DecompressStream(MemoryStream);
+      if bCompress then DecompressStream(MemoryStream);
       TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
     except
       Result := False;
@@ -228,7 +224,7 @@ begin
   MemoryStream.Free;
 
   //Clear non used values
-  if doRemoveUnsued then begin
+  if bUnused then begin
     for i := 0 to Length(self.DynamicData)-1 do begin
       RemoveUnused(i);
     end;
@@ -236,7 +232,7 @@ begin
 end;
 
 
-function TDynamicData.Load(MemoryStream: TMemoryStream): Boolean;
+function TDynamicData.Load(bCompress, bUnused: Boolean; MemoryStream: TMemoryStream): Boolean;
 var
   i: Integer;
 begin
@@ -245,7 +241,7 @@ begin
   if MemoryStream.Size > 0 then begin
     try
       MemoryStream.Position := 0;
-      if doCompress then DecompressStream(MemoryStream);
+      if bCompress then DecompressStream(MemoryStream);
       TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
       MemoryStream.Position := 0;
     except
@@ -258,7 +254,7 @@ begin
   end;
 
   //Clear non used values
-  if doRemoveUnsued then begin
+  if bUnused then begin
     for i := 0 to Length(self.DynamicData)-1 do begin
       RemoveUnused(i);
     end;
@@ -266,7 +262,7 @@ begin
 end;
 
 
-procedure TDynamicData.Save(ROOT_KEY: DWORD; KEY, Value: String);
+procedure TDynamicData.Save(bCompress: Boolean; ROOT_KEY: DWORD; KEY, Value: String);
 var
   MemoryStream: TMemoryStream;
   lOptions: TKBDynamicOptions;
@@ -274,7 +270,7 @@ var
 begin
   MemoryStream := TMemoryStream.Create;
   TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if doCompress then CompressStream(MemoryStream);
+  if bCompress then CompressStream(MemoryStream);
 
   Registry := TRegistry.Create;
   Registry.RootKey := ROOT_KEY;
@@ -286,22 +282,22 @@ begin
 end;
 
 
-procedure TDynamicData.Save(MemoryStream: TMemoryStream);
+procedure TDynamicData.Save(bCompress: Boolean; MemoryStream: TMemoryStream);
 begin
   MemoryStream.Position := 0;
   TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if doCompress then CompressStream(MemoryStream);
+  if bCompress then CompressStream(MemoryStream);
   MemoryStream.Position := 0;
 end;
 
 
-procedure TDynamicData.Save(FileName: WideString);
+procedure TDynamicData.Save(bCompress: Boolean; FileName: WideString);
 var
   MemoryStream: TMemoryStream;
 begin
   MemoryStream := TMemoryStream.Create;
   TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if doCompress then CompressStream(MemoryStream);
+  if bCompress then CompressStream(MemoryStream);
   WriteStreamToFile(MemoryStream, FileName);
   MemoryStream.Free;
 end;
@@ -319,36 +315,16 @@ begin
 end;
 
 
-function TDynamicData.CountMemory: Int64;
-var
-  i, j, k: Integer;
+function TDynamicData.GetSize: Int64;
 begin
-  Result := 0;
-
-  for i := 0 to Length(self.DynamicData)-1 do begin
-    for j := 0 to Length(self.DynamicData[i])-1 do begin
-      Result := Result + Length(self.DynamicData[i][j].Name) * SizeOf(WideChar);
-      Result := Result + SizeOf(self.DynamicData[i][j].DataType);
-
-      Result := Result + SizeOf(self.DynamicData[i][j].DataInt);
-      Result := Result + SizeOf(self.DynamicData[i][j].DataFloat);
-      Result := Result + Length(self.DynamicData[i][j].DataString) * SizeOf(WideChar);
-
-      Result := Result + Length(self.DynamicData[i][j].ArrayOfByte) * SizeOf(Byte);
-      Result := Result + Length(self.DynamicData[i][j].ArrayOfInt) * SizeOf(Int64);
-      Result := Result + Length(self.DynamicData[i][j].ArrayOfFloat) * SizeOf(Double);
-
-      for k := 0 to Length(self.DynamicData[i][j].ArrayOfString)-1 do begin
-        Result := Result + Length(self.DynamicData[i][j].ArrayOfString[k]) * SizeOf(WideChar);
-      end;
-    end;
-  end;
+  Result := TKBDynamic.GetSizeNH(self.DynamicData, TypeInfo(TDynamicList_), lOptions);
+  if Result >= 4 then Result := Result-4;
 end;
 
 
 function TDynamicData.FindIndex(Name: WideString; Value: Variant): Integer;
 var
-  i, j, k: Integer;
+  i: Integer;
   v: Variant;
 begin
   Result := -1;
