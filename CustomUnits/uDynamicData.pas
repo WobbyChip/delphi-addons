@@ -26,7 +26,9 @@ type
     ArrayOfString: TArrayOfString;
   end;
 
-  TDynamicList_ = array of array of TDynamicValue_;
+
+  TDynamicValues_ = array of TDynamicValue_;
+  TDynamicList_ = array of TDynamicValues_;
 
 type
   TDynamicData = class
@@ -56,10 +58,10 @@ type
       procedure ClearValue(Index, SubIndex: Integer);
       procedure DeleteValue(Index: Integer; Name: WideString);
 
-      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte); overload;
-      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt); overload;
-      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat); overload;
-      procedure SetValueArray(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString); overload;
+      procedure SetValueArrayByte(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
+      procedure SetValueArrayInt(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt);
+      procedure SetValueArrayFloat(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat);
+      procedure SetValueArrayString(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString);
 
       function GetValueArrayByte(Index: Integer; Name: WideString): TArrayOfByte;
       function GetValueArrayInt(Index: Integer; Name: WideString): TArrayOfInt;
@@ -68,6 +70,7 @@ type
 
       function CreateData(Index: Integer): Integer;
       procedure DeleteData(Index: Integer);
+      procedure MoveData(FromIndex, ToIndex: Integer);
       procedure ResetData;
     private
       procedure RemoveUnused(Index: Integer);
@@ -401,7 +404,7 @@ begin
 end;
 
 
-procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
+procedure TDynamicData.SetValueArrayByte(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
 var
   i, l: Integer;
 begin
@@ -421,7 +424,7 @@ begin
 end;
 
 
-procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt);
+procedure TDynamicData.SetValueArrayInt(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt);
 var
   i, l: Integer;
 begin
@@ -441,7 +444,7 @@ begin
 end;
 
 
-procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat);
+procedure TDynamicData.SetValueArrayFloat(Index: Integer; Name: WideString; ArrayOfFloat: TArrayOfFloat);
 var
   i, l: Integer;
 begin
@@ -461,7 +464,7 @@ begin
 end;
 
 
-procedure TDynamicData.SetValueArray(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString);
+procedure TDynamicData.SetValueArrayString(Index: Integer; Name: WideString; ArrayOfString: TArrayOfString);
 var
   i, l: Integer;
 begin
@@ -599,6 +602,8 @@ procedure TDynamicData.DeleteData(Index: Integer);
 var
   i: Integer;
 begin
+  if (Index >= GetLength) then Exit;
+
   if (Index = Length(self.DynamicData)-1) then begin
     System.SetLength(self.DynamicData, Length(self.DynamicData)-1);
     Exit;
@@ -609,6 +614,20 @@ begin
   end;
 
   System.SetLength(self.DynamicData, Length(self.DynamicData)-1);
+end;
+
+
+procedure TDynamicData.MoveData(FromIndex, ToIndex: Integer);
+var
+  Values: TDynamicValues_;
+begin
+  if (FromIndex < 0) or (FromIndex >= GetLength) then Exit;
+  if (ToIndex < 0) or (ToIndex >= GetLength) then Exit;
+
+  Values := self.DynamicData[FromIndex];
+  DeleteData(FromIndex);
+  CreateData(ToIndex);
+  self.DynamicData[ToIndex] := Values;
 end;
 
 
