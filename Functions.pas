@@ -649,6 +649,8 @@ var
   nw: Cardinal;
 begin
   hFile := CreateFileW(PWideChar(FileName), GENERIC_WRITE, FILE_SHARE_WRITE, nil, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+  SetFilePointer(hFile, 0, nil, FILE_BEGIN);
+  SetEndOfFile(hFile);
   WriteFile(hFile, TMemoryStream(Stream).Memory^, Stream.Size, nw, nil);
   CloseHandle(hFile);
 end;
