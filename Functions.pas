@@ -222,7 +222,7 @@ function IsAdmin: Boolean;
 function IsUefiFirmwareType: Boolean;
 function IsGPT(Drive: Integer): Boolean;
 function DiskSignature(Drive: Integer): DWORD;
-function GetEnvironmentVariable(variable: WideString): WideString;
+function GetEnvironmentVariable(Variable: WideString): WideString;
 function ComputerName: WideString;
 function GetTempDirectory: WideString;
 function GetWindowsDirectory: WideString;
@@ -275,7 +275,6 @@ function WideGetCurrentDir: WideString;
 function WideSetCurrentDir(Path: WideString): Boolean;
 function WideGetShortPathName(FileName: WideString): WideString;
 
-function BoolToInt(Value: Boolean): Integer;
 function ContainsOnlyNumbers(S: String): Boolean;
 function ExtractNumbers(S: String): String;
 function FormatSize(x: Int64; NumbersAfterComma: Byte): String;
@@ -748,13 +747,13 @@ end;
 
 
 //GetEnvironmentVariable
-function GetEnvironmentVariable(variable: WideString): WideString;
+function GetEnvironmentVariable(Variable: WideString): WideString;
 var
-  count: Integer;
+  Count: Integer;
 begin
-  count := GetEnvironmentVariableW(PWideChar(variable), nil, 0);
-  SetLength(Result, count-1);
-  GetEnvironmentVariableW(PWideChar(variable), PWideChar(Result), count);
+  Count := GetEnvironmentVariableW(PWideChar(Variable), nil, 0);
+  SetLength(Result, Count-1);
+  GetEnvironmentVariableW(PWideChar(Variable), PWideChar(Result), Count);
 end;
 //GetEnvironmentVariable
 
@@ -807,7 +806,7 @@ begin
   cRefDomainName := SizeOf(RefDomain);
   FillChar(pSID, SizeOf(pSID), 0);
   FillChar(RefDomain, SizeOf(RefDomain), 0);
-  LookupAccountName(nil, PChar(GetEnvironmentVariable('USERNAME')), @pSID, cSid, @RefDomain, cRefDomainName, peUse);
+  LookupAccountNameW(nil, PWideChar(GetEnvironmentVariable('USERNAME')), @pSID, cSid, @RefDomain, cRefDomainName, peUse);
 
   sSid := 'S-1-';
   SidIDAuthority := GetSidIdentifierAuthority(@pSid)^;
@@ -1712,14 +1711,6 @@ begin
   GetShortPathNameW(PWideChar(FileName), PWideChar(Result), Len);
 end;
 //WideGetShortPathName
-
-
-//BoolToInt
-function BoolToInt(Value: Boolean): Integer;
-begin
-  Result := Integer(Value);
-end;
-//BoolToInt
 
 
 //ContainsOnlyNumbers
