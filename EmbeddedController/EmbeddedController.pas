@@ -1,5 +1,10 @@
 unit EmbeddedController;
 
+{
+Recoded to Delphi 7: WobbyChip
+Original: https://github.com/Soberia/EmbeddedController
+}
+
 interface
 
 uses
