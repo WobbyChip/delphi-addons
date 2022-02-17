@@ -6,6 +6,13 @@ uses
   Windows, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
 
 type
+  TSortCallback = function(v1, v2: Variant; Progress: Integer; Changed: Boolean): Boolean;
+  TFilterCallback = function(v1: Variant; Progress: Integer; Changed: Boolean): Boolean;
+
+type
+  TSortType = (stInsertion);
+
+type
   TArrayOfByte = array of Byte;
   TArrayOfInt = array of Integer;
   TArrayOfFloat = array of Double;
@@ -26,7 +33,7 @@ type
     ArrayOfString: TArrayOfString;
   end;
 
-
+type
   TDynamicValues_ = array of TDynamicValue_;
   TDynamicList_ = array of TDynamicValues_;
 
@@ -52,6 +59,8 @@ type
       function GetSize: Int64;
 
       function FindIndex(Name: WideString; Value: Variant): Integer;
+      procedure Sort(Name: WideString; Callback: TSortCallback; SortType: TSortType);
+      procedure Filter(Name: WideString; Callback: TFilterCallback);
 
       procedure SetValue(Index: Integer; Name: WideString; Value: Variant);
       function GetValue(Index: Integer; Name: WideString): Variant;
@@ -75,6 +84,7 @@ type
     private
       procedure RemoveUnused(Index: Integer);
       procedure RemoveUnusedAtIndex(idx1, idx2: Integer);
+      procedure InsertionSort(Name: WideString; Callback: TSortCallback);
   end;
 
 implementation
@@ -331,6 +341,77 @@ begin
     if v = Value then begin Result := i; Break; end;
   end;
 end;
+
+
+procedure TDynamicData.Sort(Name: WideString; Callback: TSortCallback; SortType: TSortType);
+begin
+  if not Assigned(Callback) then Exit;
+
+  case SortType of
+    stInsertion: InsertionSort(Name, Callback);
+  end;
+end;
+
+
+procedure TDynamicData.InsertionSort(Name: WideString; Callback: TSortCallback);
+var
+  i, j, p1, p2: Integer;
+  v1: Variant;
+  Values: TDynamicValues_;
+  changed: Boolean;
+begin
+  p2 := -1;
+
+  for i := 1 to High(self.DynamicData) do begin
+    j := i;
+    Values := self.DynamicData[i];
+    v1 := GetValue(i, Name);
+
+    p1 := Round((i/High(self.DynamicData))*100);
+    changed := (p1 <> p2);
+    p2 := p1;
+
+    while (j > 0) and Callback(v1, GetValue(j-1, Name), p1, changed) do begin
+      changed := False;
+      self.DynamicData[j] := self.DynamicData[j-1];
+      Dec(j);
+    end;
+
+    self.DynamicData[j]:= Values;
+  end;
+end;
+
+
+procedure TDynamicData.Filter(Name: WideString; Callback: TFilterCallback);
+var
+  i, Pos: Integer;
+  s, c, p1, p2: Integer;
+  changed: Boolean;
+begin
+  if not Assigned(Callback) then Exit;
+  s := High(self.DynamicData)+1;
+  Pos := 0;
+  c := 0;
+  p2 := -1;
+
+  while Pos <= High(self.DynamicData) do begin
+    for i := Pos to High(self.DynamicData) do begin
+      Inc(c);
+      p1 := Round(c/s*100);
+      changed := (p1 <> p2);
+      p2 := p1;
+
+      if not Callback(self.GetValue(i, Name), p1, changed) then begin
+        Pos := i;
+        DeleteData(i);
+        Break;
+      end;
+    end;
+
+    if i > High(self.DynamicData) then Exit;
+  end;
+end;
+
 
 procedure TDynamicData.SetValue(Index: Integer; Name: WideString; Value: Variant);
 var

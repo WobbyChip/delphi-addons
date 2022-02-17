@@ -1747,6 +1747,7 @@ const
 var
   i: Integer;
 begin
+  Result := '';
   for i := 1 to Count do Result := Result + S[Random(Length(S))+1];
   if lowerCase then Result := AnsiLowerCase(Result);
 end;
