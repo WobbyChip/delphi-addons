@@ -3,7 +3,7 @@ unit uDynamicData;
 interface
 
 uses
-  Windows, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
+  Windows, SysUtils, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
 
 type
   TSortCallback = function(v1, v2: Variant; Progress: Integer; Changed: Boolean): Boolean;
@@ -66,6 +66,9 @@ type
       function GetValue(Index: Integer; Name: WideString): Variant;
       procedure ClearValue(Index, SubIndex: Integer);
       procedure DeleteValue(Index: Integer; Name: WideString);
+
+      procedure SetValuePointer(Index: Integer; Name: WideString; Value: Pointer);
+      function GetValuePointer(Index: Integer; Name: WideString): Pointer;
 
       procedure SetValueArrayByte(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
       procedure SetValueArrayInt(Index: Integer; Name: WideString; ArrayOfInt: TArrayOfInt);
@@ -417,7 +420,7 @@ procedure TDynamicData.SetValue(Index: Integer; Name: WideString; Value: Variant
 var
   i, l: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
@@ -447,6 +450,10 @@ begin
 
     varOleStr: self.DynamicData[Index][i].DataString := Value;
     varString: self.DynamicData[Index][i].DataString := Value;
+  else
+    ClearValue(Index, i);
+    RemoveUnusedAtIndex(Index, i);
+    raise Exception.Create('Unsupported type.');
   end;
 end;
 
@@ -456,7 +463,7 @@ var
   i: Integer;
 begin
   Result := Null;
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -485,11 +492,32 @@ begin
 end;
 
 
+procedure TDynamicData.SetValuePointer(Index: Integer; Name: WideString; Value: Pointer);
+begin
+  SetValue(Index, Name, Int64(Value));
+end;
+
+
+function TDynamicData.GetValuePointer(Index: Integer; Name: WideString): Pointer;
+var
+  Value: Variant;
+  i: Int64;
+begin
+  Result := nil;
+  Value := GetValue(Index, Name);
+
+  if Value <> Null then begin
+    i := Value;
+    Result := Pointer(i);
+  end;
+end;
+
+
 procedure TDynamicData.SetValueArrayByte(Index: Integer; Name: WideString; ArrayOfByte: TArrayOfByte);
 var
   i, l: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
@@ -509,7 +537,7 @@ procedure TDynamicData.SetValueArrayInt(Index: Integer; Name: WideString; ArrayO
 var
   i, l: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
@@ -529,7 +557,7 @@ procedure TDynamicData.SetValueArrayFloat(Index: Integer; Name: WideString; Arra
 var
   i, l: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
@@ -549,7 +577,7 @@ procedure TDynamicData.SetValueArrayString(Index: Integer; Name: WideString; Arr
 var
   i, l: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
   l := Length(self.DynamicData[Index]);
 
   for i := 0 to l do begin
@@ -570,7 +598,7 @@ var
   i: Integer;
 begin
   Result := nil;
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -586,7 +614,7 @@ var
   i: Integer;
 begin
   Result := nil;
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -602,7 +630,7 @@ var
   i: Integer;
 begin
   Result := nil;
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -618,7 +646,7 @@ var
   i: Integer;
 begin
   Result := nil;
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -648,7 +676,7 @@ procedure TDynamicData.DeleteValue(Index: Integer; Name: WideString);
 var
   i: Integer;
 begin
-  if Index >= Length(self.DynamicData) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   for i := 0 to Length(self.DynamicData[Index])-1 do begin
     if self.DynamicData[Index][i].Name = Name then begin
@@ -664,18 +692,15 @@ var
   i: Integer;
 begin
   System.SetLength(self.DynamicData, Length(self.DynamicData)+1);
-
-  if (Index = -1) then begin
-    Result := Length(self.DynamicData)-1;
-    Exit;
-  end;
+  while (Index < 0) do Index := GetLength+Index;
+  if (Index >= GetLength) then Index := GetLength-1;
 
   for i := Length(self.DynamicData)-1 downto Index+1 do begin
     self.DynamicData[i] := self.DynamicData[i-1];
   end;
 
-  Result := Index;
   System.SetLength(self.DynamicData[Index], 0);
+  Result := Index;
 end;
 
 
@@ -683,7 +708,7 @@ procedure TDynamicData.DeleteData(Index: Integer);
 var
   i: Integer;
 begin
-  if (Index >= GetLength) then Exit;
+  if (Index < 0) or (Index >= GetLength) then Exit;
 
   if (Index = Length(self.DynamicData)-1) then begin
     System.SetLength(self.DynamicData, Length(self.DynamicData)-1);
