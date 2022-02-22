@@ -85,6 +85,7 @@ begin
   end;
 end;
 
+
 constructor TBlockShutdown.Create;
 begin
   inherited Create;

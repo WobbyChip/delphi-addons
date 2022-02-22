@@ -6,8 +6,8 @@ uses
   Windows, SysUtils, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
 
 type
-  TSortCallback = function(v1, v2: Variant; Progress: Integer; Changed: Boolean): Boolean;
-  TFilterCallback = function(v1: Variant; Progress: Integer; Changed: Boolean): Boolean;
+  TSortCallback = function(v1, v2: Variant; Progress: Extended; Changed: Boolean): Boolean;
+  TFilterCallback = function(v1: Variant; Progress: Extended; Changed: Boolean): Boolean;
 
 type
   TSortType = (stInsertion);
@@ -358,23 +358,21 @@ end;
 
 procedure TDynamicData.InsertionSort(Name: WideString; Callback: TSortCallback);
 var
-  i, j, p1, p2: Integer;
+  i, j: Integer;
+  prog: Extended;
   v1: Variant;
   Values: TDynamicValues_;
   changed: Boolean;
 begin
-  p2 := -1;
-
   for i := 1 to High(self.DynamicData) do begin
     j := i;
     Values := self.DynamicData[i];
     v1 := GetValue(i, Name);
 
-    p1 := Round((i/High(self.DynamicData))*100);
-    changed := (p1 <> p2);
-    p2 := p1;
+    prog := ((i/(Length(self.DynamicData)-1))*100);
+    changed := True;
 
-    while (j > 0) and Callback(v1, GetValue(j-1, Name), p1, changed) do begin
+    while (j > 0) and Callback(v1, GetValue(j-1, Name), prog, changed) do begin
       changed := False;
       self.DynamicData[j] := self.DynamicData[j-1];
       Dec(j);
@@ -387,24 +385,20 @@ end;
 
 procedure TDynamicData.Filter(Name: WideString; Callback: TFilterCallback);
 var
-  i, Pos: Integer;
-  s, c, p1, p2: Integer;
-  changed: Boolean;
+  i, Pos, s, c: Integer;
+  prog: Extended;
 begin
   if not Assigned(Callback) then Exit;
-  s := High(self.DynamicData)+1;
+  s := Length(self.DynamicData);
   Pos := 0;
   c := 0;
-  p2 := -1;
 
   while Pos <= High(self.DynamicData) do begin
     for i := Pos to High(self.DynamicData) do begin
       Inc(c);
-      p1 := Round(c/s*100);
-      changed := (p1 <> p2);
-      p2 := p1;
+      prog := (c/s*100);
 
-      if not Callback(self.GetValue(i, Name), p1, changed) then begin
+      if not Callback(self.GetValue(i, Name), prog, True) then begin
         Pos := i;
         DeleteData(i);
         Break;
