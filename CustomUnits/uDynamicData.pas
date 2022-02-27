@@ -10,7 +10,7 @@ type
   TFilterCallback = function(v1: Variant; Progress: Extended; Changed: Boolean): Boolean;
 
 type
-  TSortType = (stInsertion);
+  TSortType = (stInsertion, stBubbleSort);
 
 type
   TArrayOfByte = array of Byte;
@@ -88,6 +88,7 @@ type
       procedure RemoveUnused(Index: Integer);
       procedure RemoveUnusedAtIndex(idx1, idx2: Integer);
       procedure InsertionSort(Name: WideString; Callback: TSortCallback);
+      procedure BubbleSort(Name: WideString; Callback: TSortCallback);
   end;
 
 implementation
@@ -352,6 +353,7 @@ begin
 
   case SortType of
     stInsertion: InsertionSort(Name, Callback);
+    stBubbleSort: BubbleSort(Name, Callback);
   end;
 end;
 
@@ -379,6 +381,41 @@ begin
     end;
 
     self.DynamicData[j]:= Values;
+  end;
+end;
+
+
+//Only can sort in ascending, descending order
+procedure TDynamicData.BubbleSort(Name: WideString; Callback: TSortCallback);
+var
+  i, c: Integer;
+  changed: Boolean;
+  Values: TDynamicValues_;
+  p1, p2: Extended;
+begin
+  changed := True;
+  p2 := -1;
+
+  while changed do begin
+    changed := False;
+    c := 0;
+
+    for i := 0 to High(self.DynamicData)-1 do begin
+      if Callback(GetValue(i, Name), GetValue(i+1, Name), 0, False) then begin
+        Values := self.DynamicData[i+1];
+        self.DynamicData[i+1] := self.DynamicData[i];
+        self.DynamicData[i] := Values;
+        changed := True;
+      end else begin
+        Inc(c);
+      end;
+    end;
+
+    if changed then begin
+      p1 := (((c+2)/(Length(self.DynamicData)))*100);
+      if (p1 <> p2) or (p1 >= 100) then Callback(GetValue(0, Name), GetValue(0, Name), p1, True);
+      p2 := p1;
+    end;
   end;
 end;
 
