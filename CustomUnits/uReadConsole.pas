@@ -3,7 +3,7 @@ unit uReadConsole;
 interface
 
 uses
-  SysUtils, Windows;
+  SysUtils, Windows, Functions;
 
 type
   TReadCallback = procedure(Text: WideString; Line: Integer);
@@ -17,6 +17,7 @@ var
 
 procedure StartReadConsole(OnRead: TReadCallback; OnExit: TExitCallback);
 procedure StopReadConsole;
+function ReadOutput(CommandLine: WideString): WideString;
 
 implementation
 
@@ -52,7 +53,7 @@ begin
         ReadConsoleOutputCharacterW(StdOutHandle, Buffer, ConsoleInfo.dwSize.X*2, ReadCoord, nr);
 
         SetLength(S, nr);
-        for j := 0 to (nr div 2)-1 do S[j] := WideChar(MakeWord(Ord(Buffer[j*2]), Ord(Buffer[j*2+1])));
+        if nr > 0 then for j := 0 to (nr div 2)-1 do S[j] := WideChar(MakeWord(Ord(Buffer[j*2]), Ord(Buffer[j*2+1])));
         if Assigned(ReadCallback) then ReadCallback(TrimRight(WideString(S)), ReadCoord.Y);
       end;
 
@@ -80,6 +81,38 @@ begin
 
   if ReadingThread <> 0 then TerminateThread(ReadingThread, 0);
   ReadingThread := 0;
+end;
+
+
+function ReadOutput(CommandLine: WideString): WideString;
+var
+  i, j, nr: Cardinal;
+  hProcess: Cardinal;
+  StdOutHandle: THandle;
+  ConsoleInfo: TConsoleScreenBufferInfo;
+  ReadCoord: TCoord;
+  Buffer: PAnsiChar;
+  S: array of WideChar;
+begin
+  Result := '';
+  AllocInvisibleConsole('', 0);
+  hProcess := WideWinExec(CommandLine, SW_HIDE);
+  WaitForSingleObject(hProcess, INFINITE);
+  StdOutHandle := GetStdHandle(STD_OUTPUT_HANDLE);
+  GetConsoleScreenBufferInfo(StdOutHandle, ConsoleInfo);
+  GetMem(Buffer, 1024*1024);
+
+  for i := 0 to ConsoleInfo.dwCursorPosition.Y do begin
+    ReadCoord.X := 0;
+    ReadCoord.Y := i;
+    ReadConsoleOutputCharacterW(StdOutHandle, Buffer, ConsoleInfo.dwSize.X*2, ReadCoord, nr);
+
+    SetLength(S, nr);
+    if nr > 0 then for j := 0 to (nr div 2)-1 do S[j] := WideChar(MakeWord(Ord(Buffer[j*2]), Ord(Buffer[j*2+1])));
+    Result := Result + TrimRight(WideString(S)) + #13#10;
+  end;
+
+  FreeConsole;
 end;
 
 end.

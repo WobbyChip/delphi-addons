@@ -1016,7 +1016,7 @@ begin
   StartUpInfo.wShowWindow := nShow;
   StartUpInfo.dwFlags := STARTF_USESHOWWINDOW;
   Windows.CreateProcessW(nil, PWideChar(CommandLine), nil, nil, True, NORMAL_PRIORITY_CLASS, nil, nil, StartUpInfo, ProcInfo);
-  Result := GetLastError;
+  Result := ProcInfo.hProcess;
 end;
 //WideWinExec
 
