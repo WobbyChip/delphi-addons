@@ -2,7 +2,8 @@ unit VersionHelper;
 
 interface
 
-uses Windows;
+uses
+  Windows;
 
 const
   VER_SERVICEPACKMAJOR = $0000010;
