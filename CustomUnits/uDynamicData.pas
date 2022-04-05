@@ -8,6 +8,7 @@ uses
 type
   TSortCallback = function(v1, v2: Variant; Progress: Extended; Changed: Boolean): Boolean;
   TFilterCallback = function(v1: Variant; Progress: Extended; Changed: Boolean): Boolean;
+  TCompareCallback = procedure(v1, v2: Variant; idx1, idx2: Integer; var d1, d2: Boolean; Progress: Extended; Changed: Boolean; var Cancelled: Boolean);
 
 type
   TSortType = (stInsertion, stBubbleSort);
@@ -61,6 +62,7 @@ type
       function FindIndex(Name: WideString; Value: Variant): Integer;
       procedure Sort(Name: WideString; Callback: TSortCallback; SortType: TSortType);
       procedure Filter(Name: WideString; Callback: TFilterCallback);
+      procedure Compare(Name: WideString; Callback: TCompareCallback);
 
       procedure SetValue(Index: Integer; Name: WideString; Value: Variant);
       function GetValue(Index: Integer; Name: WideString): Variant;
@@ -89,6 +91,7 @@ type
       procedure RemoveUnusedAtIndex(idx1, idx2: Integer);
       procedure InsertionSort(Name: WideString; Callback: TSortCallback);
       procedure BubbleSort(Name: WideString; Callback: TSortCallback);
+      procedure CompareA(idx: Integer; Name: WideString; prog: Extended; changed: Boolean; var cancel: Boolean; Callback: TCompareCallback);
   end;
 
 implementation
@@ -422,27 +425,76 @@ end;
 
 procedure TDynamicData.Filter(Name: WideString; Callback: TFilterCallback);
 var
-  i, Pos, s, c: Integer;
+  i, pos, s, c: Integer;
   prog: Extended;
 begin
   if not Assigned(Callback) then Exit;
   s := Length(self.DynamicData);
-  Pos := 0;
+  pos := 0;
   c := 0;
 
-  while Pos <= High(self.DynamicData) do begin
-    for i := Pos to High(self.DynamicData) do begin
+  while pos <= High(self.DynamicData) do begin
+    for i := pos to High(self.DynamicData) do begin
       Inc(c);
       prog := (c/s*100);
 
       if not Callback(self.GetValue(i, Name), prog, True) then begin
-        Pos := i;
+        pos := i;
         DeleteData(i);
         Break;
       end;
     end;
 
     if i > High(self.DynamicData) then Exit;
+  end;
+end;
+
+
+procedure TDynamicData.CompareA(idx: Integer; Name: WideString; prog: Extended; changed: Boolean; var cancel: Boolean; Callback: TCompareCallback);
+var
+  i: Integer;
+  v1: Variant;
+  b1, b2: Boolean;
+begin
+  v1 := self.GetValue(idx, Name);
+  i := idx+1;
+
+  while (i <= High(self.DynamicData)) do begin
+    b1 := False;
+    b2 := False;
+    Callback(v1, self.GetValue(i, Name), idx, i, b1, b2, prog, changed, cancel);
+    changed := False;
+
+    if cancel then Break;
+    if b2 then DeleteData(i);
+
+    if b1 and (idx > -1) then begin
+      DeleteData(idx);
+      idx := -1;
+    end;
+
+    if (b1 or b2) then begin
+      changed := True;
+      prog := ((idx+1)/Length(self.DynamicData)*100);
+      i := i-1;
+    end;
+
+    Inc(i);
+  end;
+end;
+
+
+procedure TDynamicData.Compare(Name: WideString; Callback: TCompareCallback);
+var
+  i: Integer;
+  Cancelled: Boolean;
+begin
+  if not Assigned(Callback) then Exit;
+  Cancelled := False;
+
+  for i := 0 to High(self.DynamicData) do begin
+    self.CompareA(i, Name, ((i+1)/Length(self.DynamicData)*100), True, Cancelled, Callback);
+    if Cancelled then Break;
   end;
 end;
 
