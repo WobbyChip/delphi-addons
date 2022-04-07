@@ -196,6 +196,7 @@ const
   PROCESS_SUSPEND_RESUME = $0800;
   IOCTL_DISK_GET_DRIVE_LAYOUT_EX = $00070050;
 
+function Q(b: Boolean; v1, v2: Variant): Variant;
 function InstanceExists(S: WideString): Boolean;
 procedure AllocInvisibleConsole(ConsoleTitle: WideString; ConsoleIcon: HICON);
 procedure Wait(Millisecs: Integer);
@@ -313,6 +314,14 @@ function GetEthernetEnabled: Boolean;
 procedure SetEthernetEnabled(b: Boolean);
 
 implementation
+
+//Question operator function
+function Q(b: Boolean; v1, v2: Variant): Variant;
+begin
+  if b then Result := v1 else Result := v2;
+end;
+//Question operator function
+
 
 //InstanceExists
 function InstanceExists(S: WideString): Boolean;
