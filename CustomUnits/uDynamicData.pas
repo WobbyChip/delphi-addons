@@ -7,7 +7,7 @@ uses
 
 type
   TSortCallback = function(v1, v2: Variant; Progress: Extended; Changed: Boolean): Boolean;
-  TFilterCallback = function(v1: Variant; Progress: Extended; Changed: Boolean): Boolean;
+  TFilterCallback = function(v1: Variant; Progress: Extended; Changed: Boolean; var Cancelled: Boolean): Boolean;
   TCompareCallback = procedure(v1, v2: Variant; idx1, idx2: Integer; var d1, d2: Boolean; Progress: Extended; Changed: Boolean; var Cancelled: Boolean);
 
 type
@@ -425,27 +425,23 @@ end;
 
 procedure TDynamicData.Filter(Name: WideString; Callback: TFilterCallback);
 var
-  i, pos, s, c: Integer;
-  prog: Extended;
+  i, l, c: Integer;
+  cancelled, d: Boolean;
 begin
   if not Assigned(Callback) then Exit;
-  s := Length(self.DynamicData);
-  pos := 0;
+  cancelled := False;
+  l := Length(self.DynamicData);
   c := 0;
+  i := 0;
 
-  while pos <= High(self.DynamicData) do begin
-    for i := pos to High(self.DynamicData) do begin
-      Inc(c);
-      prog := (c/s*100);
+  while (i <= High(self.DynamicData)) do begin
+    d := not Callback(self.GetValue(i, Name), ((c+1)/l*100), True, cancelled);
+    if cancelled then Break;
+    if d then DeleteData(i);
+    if d then Dec(i);
 
-      if not Callback(self.GetValue(i, Name), prog, True) then begin
-        pos := i;
-        DeleteData(i);
-        Break;
-      end;
-    end;
-
-    if i > High(self.DynamicData) then Exit;
+    Inc(i);
+    Inc(c);
   end;
 end;
 
@@ -487,13 +483,13 @@ end;
 procedure TDynamicData.Compare(Name: WideString; Callback: TCompareCallback);
 var
   i: Integer;
-  Cancelled: Boolean;
+  cancelled: Boolean;
 begin
   if not Assigned(Callback) then Exit;
-  Cancelled := False;
+  cancelled := False;
 
   for i := 0 to High(self.DynamicData) do begin
-    self.CompareA(i, Name, ((i+1)/Length(self.DynamicData)*100), True, Cancelled, Callback);
+    self.CompareA(i, Name, ((i+1)/Length(self.DynamicData)*100), True, cancelled, Callback);
     if Cancelled then Break;
   end;
 end;
