@@ -30,6 +30,8 @@ procedure RunMixerCallback(Msg: Integer; hMixer: HMIXER);
 procedure OpenAllMixers;
 procedure CloseAllMixers;
 
+function isDefault(DeviceId: Integer): Boolean; overload;
+function isDefault(Name: WideString): Boolean; overload;
 function GetMixerMicrophoneName(Index: Integer): WideString;
 function GetMixerMicrophone(Name: WideString): Integer;
 function GetDefaultMixerMicrophone: Integer;
@@ -170,6 +172,22 @@ end;
 //GetMixerMicrophone
 
 
+//isDefault
+function isDefault(DeviceId: Integer): Boolean;
+begin
+  Result := (DeviceId = GetDefaultMixerMicrophone);
+end;
+//isDefault
+
+
+//isDefault
+function isDefault(Name: WideString): Boolean;
+begin
+  Result := (GetMixerMicrophone(Name) = GetDefaultMixerMicrophone);
+end;
+//isDefault
+
+
 //GetDefaultMixerMicrophone
 function GetDefaultMixerMicrophone: Integer;
 const
@@ -206,7 +224,8 @@ begin
   Mixer := TAudioMixer.Create(nil);
   Mixer.MixerId := DeviceId;
   Volume := -1;
-  if Value > -1 then Volume := Round(65535/100*Value);
+  if Value > 100 then Value := 100;
+  if Value > -1 then Volume := Round((65535/100)*Value);
   Result := Mixer.SetVolume(0, -1, Volume, Volume, Mute);
   Mixer.Free;
 end;
