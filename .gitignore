@@ -18,6 +18,7 @@ WaveAudio/*.dcu
 XiControls/*.dcu
 WaveFile/*.dcu
 EmbeddedController/*.dcu
+ShadowPlay/*.dcu
 ATScrollBar.dcu
 acWorkRes.dcu
 MiniMod.dcu

@@ -59,7 +59,7 @@ type
       procedure SetLength(len: Integer);
       function GetSize: Int64;
 
-      function FindIndex(Name: WideString; Value: Variant): Integer;
+      function FindIndex(From: Integer; Name: WideString; Value: Variant): Integer;
       procedure Sort(Name: WideString; Callback: TSortCallback; SortType: TSortType);
       procedure Filter(Name: WideString; Callback: TFilterCallback);
       procedure Compare(Name: WideString; Callback: TCompareCallback);
@@ -336,14 +336,15 @@ begin
 end;
 
 
-function TDynamicData.FindIndex(Name: WideString; Value: Variant): Integer;
+function TDynamicData.FindIndex(From: Integer; Name: WideString; Value: Variant): Integer;
 var
   i: Integer;
   v: Variant;
 begin
   Result := -1;
+  if From < 0 then From := 0;
 
-  for i := 0 to Length(self.DynamicData)-1 do begin
+  for i := From to Length(self.DynamicData)-1 do begin
     v := self.GetValue(i, Name);
     if v = Value then begin Result := i; Break; end;
   end;

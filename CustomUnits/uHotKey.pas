@@ -3,7 +3,7 @@ unit uHotKey;
 interface
 
 uses
-  SysUtils, Windows, Classes, Messages;
+  SysUtils, Windows, Classes, Variants, Messages;
 
 const
   hkExclusions = [144, 111, 45, 40, 39, 38, 37, 36, 35, 34, 33];
@@ -29,11 +29,13 @@ function ShortCutToKey(ShortCut: TShortCut): Integer;
 function ShortCutToModifiers(ShortCut: TShortCut): Integer;
 function ModifiersKeyToShortCut(fsModifiers, vk: Cardinal): TShortCut;
 
-function SetShortCut(Proc: TProcedure; ShortCut: TShortCut; CustomValue: Variant): Integer;
+function SetShortCut(Proc: TProcedure; ShortCut: TShortCut): Integer; overload;
+function SetShortCut(Proc: TProcedure; ShortCut: TShortCut; CustomValue: Variant): Integer; overload;
 function ChangeShortCut(Key: Integer; ShortCut: TShortCut): Boolean;
 function ShortCutToHotKey(ShortCut: Integer): Integer;
 
-function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer;
+function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal): Integer; overload;
+function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer; overload;
 function ChangeHotKey(Key: Integer; fsModifiers, vk: Cardinal): Boolean;
 function ChangeCallback(Key: Integer; Proc: TProcedure): Boolean;
 function RemoveHotKey(Key: Integer): Boolean;
@@ -80,9 +82,21 @@ begin
 end;
 
 
+function SetShortCut(Proc: TProcedure; ShortCut: TShortCut): Integer;
+begin
+  Result := SetShortCut(Proc, ShortCut, Null);
+end;
+
+
 function SetShortCut(Proc: TProcedure; ShortCut: TShortCut; CustomValue: Variant): Integer;
 begin
   Result := SetHotKey(Proc, ShortCutToModifiers(ShortCut), ShortCutToKey(ShortCut), CustomValue);
+end;
+
+
+function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal): Integer;
+begin
+  Result := SetHotKey(Proc, fsModifiers, vk, Null);
 end;
 
 

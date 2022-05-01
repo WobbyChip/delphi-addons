@@ -36,11 +36,13 @@ begin
   FBorderColor := clNone;
 end;
 
+
 destructor TCustoHotKey.Destroy;
 begin
   FCanvas.Free;
   inherited Destroy;
 end;
+
 
 procedure TCustoHotKey.WMPaint(var Message: TWMPaint);
 begin
@@ -48,6 +50,7 @@ begin
   inherited;
   ControlState := ControlState - [csCustomPaint];
 end;
+
 
 procedure TCustoHotKey.PaintWindow(DC: HDC);
 begin
@@ -64,6 +67,7 @@ begin
     FCanvas.Unlock;
   end;
 end;
+
 
 procedure TCustoHotKey.Paint;
 var
@@ -104,6 +108,7 @@ begin
     ReleaseDC(Handle, DC);
   end;
 end;
+
 
 procedure TCustoHotKey.ChangeRectangleBy(x: Integer);
 begin
