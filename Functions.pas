@@ -497,7 +497,7 @@ end;
 procedure SelfDelete;
 begin
   WideWinExec('cmd /c "timeout /T 1 /nobreak & del "' + WideParamStr(0) + '""', SW_HIDE);
-  TerminateProcess(OpenProcess(PROCESS_TERMINATE, False, GetCurrentProcessId), 0);
+  TerminateProcess(GetCurrentProcess, 0);
 end;
 //SelfDelete
 
