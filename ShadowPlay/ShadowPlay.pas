@@ -242,7 +242,7 @@ begin
   TempDirectory := GetProperty('TempFilePath') + TEMP_FOLDER_NAME;
   hDirecotry := FindFirstFileW(PWideChar(TempDirectory + '\*.tmp'), srSearch);
   Result := (hDirecotry <> INVALID_HANDLE_VALUE);
-  if Result then Result := Result and not DeleteDirectory(TempDirectory);
+  if Result then Result := Result and not DeleteDirectory(TempDirectory); //This one lags
   Windows.FindClose(hDirecotry);
 end;
 
