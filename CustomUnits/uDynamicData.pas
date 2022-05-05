@@ -82,7 +82,8 @@ type
       function GetValueArrayFloat(Index: Integer; Name: WideString): TArrayOfFloat;
       function GetValueArrayString(Index: Integer; Name: WideString): TArrayOfString;
 
-      function CreateData(Index: Integer): Integer;
+      function CreateData(Index: Integer): Integer; overload;
+      function CreateData(Index, pDupe: Integer; Names: array of WideString; Values: array of Variant): Integer; overload;
       procedure DeleteData(Index: Integer);
       procedure MoveData(FromIndex, ToIndex: Integer);
       procedure ResetData;
@@ -781,6 +782,19 @@ begin
 
   System.SetLength(self.DynamicData[Index], 0);
   Result := Index;
+end;
+
+
+function TDynamicData.CreateData(Index, pDupe: Integer; Names: array of WideString; Values: array of Variant): Integer;
+var
+  i: Integer;
+begin
+  Result := -1;
+  if Length(Names) <> Length(Values) then Exit;
+  pDupe := Q((Length(Names) > pDupe), pDupe, -1);
+  if (pDupe > -1) and (FindIndex(0, Names[pDupe], Values[pDupe]) > -1) then Exit;
+  Result := CreateData(Index);
+  for i := 0 to Length(Names)-1 do SetValue(Result, Names[i], Values[i]);
 end;
 
 

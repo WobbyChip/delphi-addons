@@ -293,13 +293,13 @@ function CompareSize(SizeOne, Operator, SizeTwo: Int64): Boolean;
 function RegistryValueExists(RootKey: HKEY; Key, ValueName: String): Boolean;
 procedure DeleteRegistryKey(RootKey: HKEY; Key: String);
 procedure DeleteRegistryValue(RootKey: HKEY; Key, ValueName: String);
-procedure LoadRegistryInteger(var x: Integer; RootKey: HKEY; Key, ValueName: String);
+function LoadRegistryInteger(var x: Integer; RootKey: HKEY; Key, ValueName: String): Boolean;
+function LoadRegistryBoolean(var x: Boolean; RootKey: HKEY; Key, ValueName: String): Boolean;
+function LoadRegistryString(var x: String; RootKey: HKEY; Key, ValueName: String): Boolean;
+function LoadRegistryWideString(var x: WideString; RootKey: HKEY; Key, ValueName: String): Boolean;
 procedure SaveRegistryInteger(x: Int64; RootKey: HKEY; Key, ValueName: String);
-procedure LoadRegistryBoolean(var x: Boolean; RootKey: HKEY; Key, ValueName: String);
 procedure SaveRegistryBoolean(x: Boolean; RootKey: HKEY; Key, ValueName: String);
-procedure LoadRegistryString(var x: String; RootKey: HKEY; Key, ValueName: String);
 procedure SaveRegistryString(x: String; RootKey: HKEY; Key, ValueName: String);
-procedure LoadRegistryWideString(var x: WideString; RootKey: HKEY; Key, ValueName: String);
 procedure SaveRegistryWideString(x: WideString; RootKey: HKEY; Key, ValueName: String);
 
 procedure InvokeBSOD;
@@ -1988,21 +1988,83 @@ end;
 
 
 //LoadRegistryInteger
-procedure LoadRegistryInteger(var x: Integer; RootKey: HKEY; Key, ValueName: String);
+function LoadRegistryInteger(var x: Integer; RootKey: HKEY; Key, ValueName: String): Boolean;
 var
   Registry: TRegistry;
 begin
+  Result := False;
   Registry := TRegistry.Create;
   Registry.RootKey := RootKey;
   Registry.OpenKey(Key, True);
 
   if Registry.ValueExists(ValueName) then begin
     x := Registry.ReadInteger(ValueName);
+    Result := True;
   end;
 
   Registry.Free;
 end;
 //LoadRegistryInteger
+
+
+//LoadRegistryBoolean
+function LoadRegistryBoolean(var x: Boolean; RootKey: HKEY; Key, ValueName: String): Boolean;
+var
+  Registry: TRegistry;
+begin
+  Result := False;
+  Registry := TRegistry.Create;
+  Registry.RootKey := RootKey;
+  Registry.OpenKey(Key, True);
+
+  if Registry.ValueExists(ValueName) then begin
+    x := Registry.ReadBool(ValueName);
+    Result := True;
+  end;
+
+  Registry.Free;
+end;
+//LoadRegistryBoolean
+
+
+//LoadRegistryString
+function LoadRegistryString(var x: String; RootKey: HKEY; Key, ValueName: String): Boolean;
+var
+  Registry: TRegistry;
+begin
+  Result := False;
+  Registry := TRegistry.Create;
+  Registry.RootKey := RootKey;
+  Registry.OpenKey(Key, True);
+
+  if Registry.ValueExists(ValueName) then begin
+    x := Registry.ReadString(ValueName);
+    Result := True;
+  end;
+
+  Registry.Free;
+end;
+//LoadRegistryString
+
+
+//LoadRegistryWideString
+function LoadRegistryWideString(var x: WideString; RootKey: HKEY; Key, ValueName: String): Boolean;
+var
+  Registry: TTNTRegistry;
+begin
+  Result := False;
+  Registry := TTNTRegistry.Create;
+  Registry.RootKey := RootKey;
+  Registry.OpenKey(Key, True);
+
+  if Registry.ValueExists(ValueName) then begin
+    x := Registry.ReadString(ValueName);
+    Result := True;
+  end;
+
+  Registry.Free;
+end;
+//LoadRegistryWideString
 
 
 //SaveRegistryInteger
@@ -2019,24 +2081,6 @@ end;
 //SaveRegistryInteger
 
 
-//LoadRegistryBoolean
-procedure LoadRegistryBoolean(var x: Boolean; RootKey: HKEY; Key, ValueName: String);
-var
-  Registry: TRegistry;
-begin
-  Registry := TRegistry.Create;
-  Registry.RootKey := RootKey;
-  Registry.OpenKey(Key, True);
-
-  if Registry.ValueExists(ValueName) then begin
-    x := Registry.ReadBool(ValueName);
-  end;
-
-  Registry.Free;
-end;
-//LoadRegistryBoolean
-
-
 //SaveRegistryBoolean
 procedure SaveRegistryBoolean(x: Boolean; RootKey: HKEY; Key, ValueName: String);
 var
@@ -2051,24 +2095,6 @@ end;
 //SaveRegistryBoolean
 
 
-//LoadRegistryString
-procedure LoadRegistryString(var x: String; RootKey: HKEY; Key, ValueName: String);
-var
-  Registry: TRegistry;
-begin
-  Registry := TRegistry.Create;
-  Registry.RootKey := RootKey;
-  Registry.OpenKey(Key, True);
-
-  if Registry.ValueExists(ValueName) then begin
-    x := Registry.ReadString(ValueName);
-  end;
-
-  Registry.Free;
-end;
-//LoadRegistryString
-
-
 //SaveRegistryString
 procedure SaveRegistryString(x: String; RootKey: HKEY; Key, ValueName: String);
 var
@@ -2081,24 +2107,6 @@ begin
   Registry.Free;
 end;
 //SaveRegistryString
-
-
-//LoadRegistryWideString
-procedure LoadRegistryWideString(var x: WideString; RootKey: HKEY; Key, ValueName: String);
-var
-  Registry: TTNTRegistry;
-begin
-  Registry := TTNTRegistry.Create;
-  Registry.RootKey := RootKey;
-  Registry.OpenKey(Key, True);
-
-  if Registry.ValueExists(ValueName) then begin
-    x := Registry.ReadString(ValueName);
-  end;
-
-  Registry.Free;
-end;
-//LoadRegistryWideString
 
 
 //SaveRegistryWideString

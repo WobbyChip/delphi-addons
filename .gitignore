@@ -19,6 +19,7 @@ XiControls/*.dcu
 WaveFile/*.dcu
 EmbeddedController/*.dcu
 ShadowPlay/*.dcu
+Win32API/*.dcu
 ATScrollBar.dcu
 acWorkRes.dcu
 MiniMod.dcu
