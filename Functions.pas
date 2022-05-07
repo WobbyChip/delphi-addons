@@ -216,7 +216,7 @@ function ReadFileToString(FileName: WideString): String;
 procedure WriteStringToFile(FileName: WideString; S: String);
 procedure WriteFileToStream(Stream: TStream; FileName: WideString);
 procedure WriteStreamToFile(Stream: TStream; FileName: WideString);
-procedure SaveByteArray(var ArrayOfByte: array of byte; FileName: WideString);
+procedure SaveByteArray(ArrayOfByte: array of byte; FileName: WideString);
 
 function GetActiveMonitor: Integer;
 function IsAdmin: Boolean;
@@ -237,7 +237,7 @@ function IsInternet: Boolean;
 procedure SendDiscordWebhook(WebhookURL, WebhookMessage: WideString);
 procedure WakeOnLan(IP, AMacAddress: String; Port: Integer);
 
-procedure ExecuteWait(FileName, Params: WideString; nShow: Integer);
+function ExecuteWait(FileName, Params: WideString; nShow: Integer): Cardinal;
 function ExecuteProcess(FileName, Params: WideString; nShow: Integer): THandle;
 function ExecuteProcessAsAdmin(FileName, Params: WideString; nShow: Integer): THandle;
 function WideWinExec(CommandLine: WideString; nShow: Integer): Cardinal;
@@ -666,7 +666,7 @@ end;
 
 
 //SaveByteArray
-procedure SaveByteArray(var ArrayOfByte: array of byte; FileName: WideString);
+procedure SaveByteArray(ArrayOfByte: array of byte; FileName: WideString);
 var
   hFile, nw: Cardinal;
 begin
@@ -962,7 +962,7 @@ end;
 
 
 //ExecuteWait
-procedure ExecuteWait(FileName, Params: WideString; nShow: Integer);
+function ExecuteWait(FileName, Params: WideString; nShow: Integer): Cardinal;
 var
   ShExecInfo: TShellExecuteInfoW;
 begin
@@ -974,6 +974,7 @@ begin
   ShExecInfo.lpVerb := 'open';
   ShExecInfo.nShow := nShow;
   if ShellExecuteExW(@ShExecInfo) then WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
+  GetExitCodeProcess(ShExecInfo.hProcess, Result);
 end;
 //ExecuteWait
 
