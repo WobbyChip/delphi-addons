@@ -302,6 +302,7 @@ end;
 
 destructor TECDriver.Destroy;
 begin
+  deinitialize;
   inherited Destroy;
 end;
 

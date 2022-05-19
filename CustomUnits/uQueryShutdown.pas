@@ -30,8 +30,8 @@ procedure SetQueryShutdown(Callback: TQueryShutdownCallback);
 implementation
 
 function ChangeWindowMessageFilter(msg: Cardinal; Action: Dword): BOOL; stdcall; external user32;
-function ShutdownBlockReasonCreate(hWnd: HWND; Reason: LPCWSTR): Bool; stdcall; external user32;
-function ShutdownBlockReasonDestroy(hWnd: HWND): Bool; stdcall; external user32;
+function ShutdownBlockReasonCreate(hWnd: HWND; Reason: LPCWSTR): BOOL; stdcall; external user32;
+function ShutdownBlockReasonDestroy(hWnd: HWND): BOOL; stdcall; external user32;
 
 
 function WndProc(hWnd, Msg: Longint; wParam: WPARAM; lParam: LPARAM): Longint; stdcall;

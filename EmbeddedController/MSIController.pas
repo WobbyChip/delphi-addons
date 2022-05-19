@@ -1,12 +1,9 @@
-unit uCoolerBoost;
+unit MSIController;
 
 interface
 
 uses
   EmbeddedController;
-
-type
-  TModeType = (modeAuto, modeBasic, modeAdvanced);
 
 const
   EC_WEBCAM_ADDRESS = $2E;
@@ -21,30 +18,48 @@ const
   EC_FANS_MODE_BASIC = $4C;
   EC_FANS_MODE_ADVANCED = $8C;
 
-  //0 - Address; 1 - ON; 2 - OFF
-  //EC_WEBCAM: array[0..2] of Integer = ($2E, $4B, $49);
-  //EC_CB: array[0..2] of Integer = ($98, $80, $00);
-  //0 - Address; 1 - Speed Address; 2 - Auto; 3 - Basic; 4 - Advanced;
-  //EC_FANS: array[0..4] of Integer = (EC_FANS_ADRRESS, EC_FANS_SPEED_ADRRESS, AUTO_MODE, BASIC_MODE, ADVANCED_MODE);
+type
+  TModeType = (modeAuto, modeBasic, modeAdvanced);
 
-var
-  EC: TEmbeddedController;
+type
+  TMSIController = class
+    protected
+      EC: TEmbeddedController;
+    public
+      constructor Create;
+      destructor Destroy; override;
 
-function GetBasicValue: Integer;
-function GetMode: TModeType;
-function isECLoaded: Boolean;
-function isCoolerBoostEnabled: Boolean;
-function isWebcamEnabled: Boolean;
-procedure SetBasicMode(Value: Integer);
-procedure SetMode(mode: TModeType);
-procedure SetCoolerBoostEnabled(bool: Boolean);
-procedure SetWebcamEnabled(bool: Boolean);
-procedure ToggleCoolerBoost;
-procedure ToggleWebcam;
+      function GetBasicValue: Integer;
+      function GetFanMode: TModeType;
+      function isECLoaded: Boolean;
+      function isCoolerBoostEnabled: Boolean;
+      function isWebcamEnabled: Boolean;
+      procedure SetBasicMode(Value: Integer);
+      procedure SetFanMode(mode: TModeType);
+      procedure SetCoolerBoostEnabled(bool: Boolean);
+      procedure SetWebcamEnabled(bool: Boolean);
+      procedure ToggleCoolerBoost;
+      procedure ToggleWebcam;
+    end;
 
 implementation
 
-function GetBasicValue: Integer;
+constructor TMSIController.Create;
+begin
+  inherited Create;
+  EC := TEmbeddedController.Create;
+  EC.retry := 5;
+end;
+
+
+destructor TMSIController.Destroy;
+begin
+  EC.Destroy;
+  inherited Destroy;
+end;
+
+
+function TMSIController.GetBasicValue: Integer;
 var
   bResult: Byte;
 begin
@@ -53,11 +68,12 @@ begin
 end;
 
 
-function GetMode: TModeType;
+function TMSIController.GetFanMode: TModeType;
 var
   bResult: Byte;
 begin
-  while not EC.readByte(EC_FANS_SPEED_ADRRESS, bResult) or (bResult = 255) do;
+  Result := modeAuto;
+  while not EC.readByte(EC_FANS_ADRRESS, bResult) or (bResult = 255) do;
 
   case bResult of
     EC_FANS_MODE_AUTO: Result := modeAuto;
@@ -67,13 +83,13 @@ begin
 end;
 
 
-function isECLoaded: Boolean;
+function TMSIController.isECLoaded: Boolean;
 begin
   Result := EC.driverFileExist and EC.driverLoaded;
 end;
 
 
-function isCoolerBoostEnabled: Boolean;
+function TMSIController.isCoolerBoostEnabled: Boolean;
 var
   bResult: Byte;
 begin
@@ -82,7 +98,7 @@ begin
 end;
 
 
-function isWebcamEnabled: Boolean;
+function TMSIController.isWebcamEnabled: Boolean;
 var
   bResult: Byte;
 begin
@@ -91,16 +107,16 @@ begin
 end;
 
 
-procedure SetBasicMode(Value: Integer);
+procedure TMSIController.SetBasicMode(Value: Integer);
 begin
   if (Value < -15) or (Value > 15) then Exit;
   if (Value <= 0) then Value := 128 + Abs(Value);
-  SetMode(modeBasic);
+  SetFanMode(modeBasic);
   while EC.readByte(EC_FANS_SPEED_ADRRESS) <> Value do EC.writeByte(EC_FANS_SPEED_ADRRESS, Value);
 end;
 
 
-procedure SetMode(mode: TModeType);
+procedure TMSIController.SetFanMode(mode: TModeType);
 begin
   case mode of
     modeAuto: while EC.readByte(EC_FANS_ADRRESS) <> EC_FANS_MODE_AUTO do EC.writeByte(EC_FANS_ADRRESS, EC_FANS_MODE_AUTO);
@@ -110,9 +126,7 @@ begin
 end;
 
 
-procedure SetCoolerBoostEnabled(bool: Boolean);
-var
-  bResult: Byte;
+procedure TMSIController.SetCoolerBoostEnabled(bool: Boolean);
 begin
   if bool then begin
     while (EC.readByte(EC_CB_ADDRESS) <> EC_CB_ON) do EC.writeByte(EC_CB_ADDRESS, EC_CB_ON)
@@ -122,7 +136,7 @@ begin
 end;
 
 
-procedure SetWebcamEnabled(bool: Boolean);
+procedure TMSIController.SetWebcamEnabled(bool: Boolean);
 begin
   if bool then begin
     while (EC.readByte(EC_WEBCAM_ADDRESS) <> EC_WEBCAM_ON) do EC.writeByte(EC_WEBCAM_ADDRESS, EC_WEBCAM_ON);
@@ -132,19 +146,15 @@ begin
 end;
 
 
-procedure ToggleCoolerBoost;
+procedure TMSIController.ToggleCoolerBoost;
 begin
   SetCoolerBoostEnabled(not isCoolerBoostEnabled);
 end;
 
 
-procedure ToggleWebcam;
+procedure TMSIController.ToggleWebcam;
 begin
   SetWebcamEnabled(not isWebcamEnabled);
 end;
 
-
-initialization
-  EC := TEmbeddedController.Create;
-  EC.retry := 5;
 end.

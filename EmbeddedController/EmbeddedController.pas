@@ -64,6 +64,8 @@ end;
 
 destructor TEmbeddedController.Destroy;
 begin
+  driverLoaded := False;
+  driver.Destroy;
   inherited Destroy;
 end;
 
