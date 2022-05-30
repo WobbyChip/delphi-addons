@@ -216,7 +216,8 @@ function ReadFileToString(FileName: WideString): String;
 procedure WriteStringToFile(FileName: WideString; S: String);
 procedure WriteFileToStream(Stream: TStream; FileName: WideString);
 procedure WriteStreamToFile(Stream: TStream; FileName: WideString);
-procedure SaveByteArray(ArrayOfByte: array of byte; FileName: WideString);
+procedure SaveByteArray_var(var ArrayOfByte: array of byte; FileName: WideString);
+procedure SaveByteArray_const(const ArrayOfByte: array of byte; FileName: WideString);
 
 function GetActiveMonitor: Integer;
 function IsAdmin: Boolean;
@@ -666,8 +667,8 @@ end;
 //WriteStreamToFile
 
 
-//SaveByteArray
-procedure SaveByteArray(ArrayOfByte: array of byte; FileName: WideString);
+//SaveByteArray_var
+procedure SaveByteArray_var(var ArrayOfByte: array of byte; FileName: WideString);
 var
   hFile, nw: Cardinal;
 begin
@@ -677,7 +678,21 @@ begin
   WriteFile(hFile, ArrayOfByte[Low(ArrayOfByte)], Length(ArrayOfByte), nw, nil);
   CloseHandle(hFile);
 end;
-//SaveByteArray
+//SaveByteArray_var
+
+
+//SaveByteArray_const
+procedure SaveByteArray_const(const ArrayOfByte: array of byte; FileName: WideString);
+var
+  hFile, nw: Cardinal;
+begin
+  hFile := CreateFileW(PWideChar(FileName), GENERIC_WRITE, FILE_SHARE_WRITE, nil, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+  SetFilePointer(hFile, 0, nil, FILE_BEGIN);
+  SetEndOfFile(hFile);
+  WriteFile(hFile, ArrayOfByte[Low(ArrayOfByte)], Length(ArrayOfByte), nw, nil);
+  CloseHandle(hFile);
+end;
+//SaveByteArray_const
 
 
 //GetActiveMonitor

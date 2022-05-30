@@ -3,7 +3,7 @@ unit uDynamicData;
 interface
 
 uses
-  Windows, SysUtils, Classes, Dialogs, Variants, TypInfo, Registry, MMSystem, uKBDynamic, Functions;
+  Windows, SysUtils, Classes, Variants, TypInfo, Registry, uKBDynamic, Functions;
 
 type
   TSortCallback = function(v1, v2: Variant; Progress: Extended; Changed: Boolean): Boolean;
@@ -12,6 +12,12 @@ type
 
 type
   TSortType = (stInsertion, stBubbleSort);
+
+type
+  TLoadOption = (loCompress, loRemoveUnused, loOFReset, loOFDelete);
+  TLoadOptions = set of TLoadOption;
+  TSaveOption = (soCompress);
+  TSaveOptions = set of TSaveOption;
 
 type
   TArrayOfByte = array of Byte;
@@ -48,12 +54,12 @@ type
       constructor Create(DynamicKeys: array of WideString);
       destructor Destroy; override;
 
-      function Load(bCompress, bUnused: Boolean; ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean; overload;
-      function Load(bCompress, bUnused: Boolean; FileName: WideString; onFailDelete: Boolean): Boolean; overload;
-      function Load(bCompress, bUnused: Boolean; MemoryStream: TMemoryStream): Boolean; overload;
-      procedure Save(bCompress: Boolean; ROOT_KEY: DWORD; KEY, Value: String); overload;
-      procedure Save(bCompress: Boolean; FileName: WideString); overload;
-      procedure Save(bCompress: Boolean; MemoryStream: TMemoryStream); overload;
+      function Load(ROOT_KEY: DWORD; KEY, Value: String; Options: TLoadOptions): Boolean; overload;
+      function Load(FileName: WideString; Options: TLoadOptions): Boolean; overload;
+      function Load(MemoryStream: TMemoryStream; Options: TLoadOptions): Boolean; overload;
+      procedure Save(ROOT_KEY: DWORD; KEY, Value: String; Options: TSaveOptions); overload;
+      procedure Save(FileName: WideString; Options: TSaveOptions); overload;
+      procedure Save(MemoryStream: TMemoryStream; Options: TSaveOptions); overload;
 
       function GetLength: Integer;
       procedure SetLength(len: Integer);
@@ -87,7 +93,7 @@ type
       function CreateData(Index, pDupe: Integer; Names: array of WideString; Values: array of Variant): Integer; overload;
       procedure DeleteData(Index: Integer);
       procedure MoveData(FromIndex, ToIndex: Integer);
-      procedure ResetData;
+      procedure ClearAllData;
     private
       procedure RemoveUnused(Index: Integer);
       procedure RemoveUnusedAtIndex(idx1, idx2: Integer);
@@ -149,6 +155,7 @@ begin
   System.SetLength(self.DynamicData[idx1], ArrayLength-1);
 end;
 
+
 procedure TDynamicData.RemoveUnused(Index: Integer);
 var
   j, l: Integer;
@@ -173,13 +180,12 @@ begin
 end;
 
 
-function TDynamicData.Load(bCompress, bUnused: Boolean; ROOT_KEY: DWORD; KEY, Value: String; onFailDelete: Boolean): Boolean;
+function TDynamicData.Load(ROOT_KEY: DWORD; KEY, Value: String; Options: TLoadOptions): Boolean;
 var
   MemoryStream: TMemoryStream;
   Registry: TRegistry;
-  i: Integer;
 begin
-  Result := True;
+  Result := False;
   Registry := TRegistry.Create;
   Registry.RootKey := ROOT_KEY;
   Registry.OpenKey(KEY, True);
@@ -189,88 +195,47 @@ begin
     MemoryStream.SetSize(Registry.GetDataSize(Value));
     Registry.ReadBinaryData(Value, MemoryStream.Memory^, MemoryStream.Size);
 
-    try
-      if bCompress then DecompressStream(MemoryStream);
-      TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
-      MemoryStream.Free;
-    except
-      Result := False;
-      PlaySound('SystemExclamation', 0, SND_ASYNC);
-      ShowMessage('There was an error loading data.');
-      ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-      System.SetLength(self.DynamicData, 0);
-      if onFailDelete then Registry.DeleteValue(Value);
-    end;
+    Result := self.Load(MemoryStream, Options);
+    if (not Result) and (loOFDelete in Options) then Registry.DeleteValue(Value);
+    MemoryStream.Free;
   end;
 
   Registry.Free;
-
-  //Clear non used values
-  if bUnused then begin
-    for i := 0 to Length(self.DynamicData)-1 do begin
-      RemoveUnused(i);
-    end;
-  end;
 end;
 
 
-function TDynamicData.Load(bCompress, bUnused: Boolean; FileName: WideString; onFailDelete: Boolean): Boolean;
+function TDynamicData.Load(FileName: WideString; Options: TLoadOptions): Boolean;
 var
   MemoryStream: TMemoryStream;
-  i: Integer;
 begin
-  Result := True;
   MemoryStream := TMemoryStream.Create;
   WriteFileToStream(MemoryStream, FileName);
-
-  if MemoryStream.Size > 0 then begin
-    try
-      if bCompress then DecompressStream(MemoryStream);
-      TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
-    except
-      Result := False;
-      PlaySound('SystemExclamation', 0, SND_ASYNC);
-      ShowMessage('There was an error loading data.');
-      ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-      System.SetLength(self.DynamicData, 0);
-      if onFailDelete then DeleteFileW(PWideChar(FileName));
-    end;
-  end;
-
+  Result := self.Load(MemoryStream, Options);
+  if (not Result) and (loOFDelete in Options) then DeleteFileW(PWideChar(FileName));
   MemoryStream.Free;
-
-  //Clear non used values
-  if bUnused then begin
-    for i := 0 to Length(self.DynamicData)-1 do begin
-      RemoveUnused(i);
-    end;
-  end;
 end;
 
 
-function TDynamicData.Load(bCompress, bUnused: Boolean; MemoryStream: TMemoryStream): Boolean;
+function TDynamicData.Load(MemoryStream: TMemoryStream; Options: TLoadOptions): Boolean;
 var
   i: Integer;
 begin
-  Result := True;
+  Result := False;
 
   if MemoryStream.Size > 0 then begin
     try
       MemoryStream.Position := 0;
-      if bCompress then DecompressStream(MemoryStream);
-      TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
+      if (loCompress in Options) then DecompressStream(MemoryStream);
+      Result := TKBDynamic.ReadFrom(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1);
       MemoryStream.Position := 0;
     except
       Result := False;
-      PlaySound('SystemExclamation', 0, SND_ASYNC);
-      ShowMessage('There was an error loading data.');
-      ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
-      System.SetLength(self.DynamicData, 0);
+      if (loOFReset in Options) then self.ClearAllData;
     end;
   end;
 
   //Clear non used values
-  if bUnused then begin
+  if Result and (loRemoveUnused in Options) then begin
     for i := 0 to Length(self.DynamicData)-1 do begin
       RemoveUnused(i);
     end;
@@ -278,15 +243,13 @@ begin
 end;
 
 
-procedure TDynamicData.Save(bCompress: Boolean; ROOT_KEY: DWORD; KEY, Value: String);
+procedure TDynamicData.Save(ROOT_KEY: DWORD; KEY, Value: String; Options: TSaveOptions);
 var
   MemoryStream: TMemoryStream;
-  lOptions: TKBDynamicOptions;
   Registry: TRegistry;
 begin
   MemoryStream := TMemoryStream.Create;
-  TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if bCompress then CompressStream(MemoryStream);
+  self.Save(MemoryStream, Options);
 
   Registry := TRegistry.Create;
   Registry.RootKey := ROOT_KEY;
@@ -298,24 +261,23 @@ begin
 end;
 
 
-procedure TDynamicData.Save(bCompress: Boolean; MemoryStream: TMemoryStream);
-begin
-  MemoryStream.Position := 0;
-  TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if bCompress then CompressStream(MemoryStream);
-  MemoryStream.Position := 0;
-end;
-
-
-procedure TDynamicData.Save(bCompress: Boolean; FileName: WideString);
+procedure TDynamicData.Save(FileName: WideString; Options: TSaveOptions);
 var
   MemoryStream: TMemoryStream;
 begin
   MemoryStream := TMemoryStream.Create;
-  TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
-  if bCompress then CompressStream(MemoryStream);
+  self.Save(MemoryStream, Options);
   WriteStreamToFile(MemoryStream, FileName);
   MemoryStream.Free;
+end;
+
+
+procedure TDynamicData.Save(MemoryStream: TMemoryStream; Options: TSaveOptions);
+begin
+  MemoryStream.Position := 0;
+  TKBDynamic.WriteTo(MemoryStream, self.DynamicData, TypeInfo(TDynamicList_), 1, lOptions);
+  if (soCompress in Options) then CompressStream(MemoryStream);
+  MemoryStream.Position := 0;
 end;
 
 
@@ -354,7 +316,6 @@ end;
 function TDynamicData.FindValue(From: Integer; Name: WideString; Value: Variant; ValueName: WideString): Variant;
 var
   i: Integer;
-  v: Variant;
 begin
   Result := Null;
   i := FindIndex(From, Name, Value);
@@ -841,8 +802,9 @@ begin
 end;
 
 
-procedure TDynamicData.ResetData;
+procedure TDynamicData.ClearAllData;
 begin
+  ZeroMemory(@self.DynamicData, SizeOf(self.DynamicData));
   System.SetLength(self.DynamicData, 0);
 end;
 

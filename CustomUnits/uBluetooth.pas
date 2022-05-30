@@ -1085,7 +1085,7 @@ var
 begin
   IsWow64Process(GetCurrentProcess, wow64);
   FileName := GetTempDirectory + 'Bluetooth.exe';
-  if wow64 then SaveByteArray(BluetoothX64, FileName) else SaveByteArray(BluetoothX86, FileName);
+  if wow64 then SaveByteArray_const(BluetoothX64, FileName) else SaveByteArray_const(BluetoothX86, FileName);
 
   hProcess := WideWinExec(FileName + ' get', SW_HIDE);
   WaitForSingleObject(hProcess, INFINITE);
@@ -1102,7 +1102,7 @@ var
 begin
   IsWow64Process(GetCurrentProcess, wow64);
   FileName := GetTempDirectory + 'Bluetooth.exe';
-  if wow64 then SaveByteArray(BluetoothX64, FileName) else SaveByteArray(BluetoothX86, FileName);
+  if wow64 then SaveByteArray_const(BluetoothX64, FileName) else SaveByteArray_const(BluetoothX86, FileName);
 
   hProcess := WideWinExec(FileName + Q(bool, ' set 1', ' set 0'), SW_HIDE);
   WaitForSingleObject(hProcess, INFINITE);
