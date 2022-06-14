@@ -304,7 +304,7 @@ var
 begin
   Result := 0;
   if not loaded then Exit;
-  for i := 0 to Length(Keys)-1 do Keys[i] := Integer(GetProperty('IRToggleHKey'+IntToStr(i)));
+  for i := 0 to Length(Keys)-1 do Keys[i] := Integer(GetProperty('IRToggleHKey' + IntToStr(i)));
   Result := FromVirtual(Keys);
 end;
 

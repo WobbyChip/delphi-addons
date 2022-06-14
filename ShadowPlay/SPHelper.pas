@@ -62,7 +62,7 @@ begin
   fsModifiers := 0;
 
   for i := 0 to Length(Keys)-1 do begin
-    v := getModifierKey(Keys[i]);
+    v := GetModifierKey(Keys[i]);
     if (v <> 0) then fsModifiers := (fsModifiers or v) else if (Keys[i] <> 0) then Result := Keys[i];
   end;
 
