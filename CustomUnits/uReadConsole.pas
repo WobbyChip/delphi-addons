@@ -18,6 +18,7 @@ var
 procedure StartReadConsole(OnRead: TReadCallback; OnExit: TExitCallback);
 procedure StopReadConsole;
 function ReadOutput(CommandLine: WideString): WideString;
+function ReadOutputByPID(PID: DWORD): WideString;
 
 implementation
 
@@ -98,6 +99,36 @@ begin
   AllocInvisibleConsole('', 0);
   hProcess := WideWinExec(CommandLine, SW_HIDE);
   WaitForSingleObject(hProcess, INFINITE);
+  StdOutHandle := GetStdHandle(STD_OUTPUT_HANDLE);
+  GetConsoleScreenBufferInfo(StdOutHandle, ConsoleInfo);
+  GetMem(Buffer, 1024*1024);
+
+  for i := 0 to ConsoleInfo.dwCursorPosition.Y do begin
+    ReadCoord.X := 0;
+    ReadCoord.Y := i;
+    ReadConsoleOutputCharacterW(StdOutHandle, Buffer, ConsoleInfo.dwSize.X*2, ReadCoord, nr);
+
+    SetLength(S, nr);
+    if nr > 0 then for j := 0 to (nr div 2)-1 do S[j] := WideChar(MakeWord(Ord(Buffer[j*2]), Ord(Buffer[j*2+1])));
+    Result := Result + TrimRight(WideString(S)) + #13#10;
+  end;
+
+  FreeConsole;
+end;
+
+
+function ReadOutputByPID(PID: DWORD): WideString;
+var
+  i, j, nr: Cardinal;
+  StdOutHandle: THandle;
+  ConsoleInfo: TConsoleScreenBufferInfo;
+  ReadCoord: TCoord;
+  Buffer: PAnsiChar;
+  S: array of WideChar;
+begin
+  Result := '';
+  if not AttachConsole(PID) then Exit;
+  if GetStdHandle(STD_OUTPUT_HANDLE) = INVALID_HANDLE_VALUE then Exit;
   StdOutHandle := GetStdHandle(STD_OUTPUT_HANDLE);
   GetConsoleScreenBufferInfo(StdOutHandle, ConsoleInfo);
   GetMem(Buffer, 1024*1024);
