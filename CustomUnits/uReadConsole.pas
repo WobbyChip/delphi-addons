@@ -128,8 +128,8 @@ var
 begin
   Result := '';
   if not AttachConsole(PID) then Exit;
-  if GetStdHandle(STD_OUTPUT_HANDLE) = INVALID_HANDLE_VALUE then Exit;
   StdOutHandle := GetStdHandle(STD_OUTPUT_HANDLE);
+  if StdOutHandle = INVALID_HANDLE_VALUE then Exit;
   GetConsoleScreenBufferInfo(StdOutHandle, ConsoleInfo);
   GetMem(Buffer, 1024*1024);
 
