@@ -51,7 +51,7 @@ begin
       for i := CursorPosition.Y to ConsoleInfo.dwCursorPosition.Y do begin
         ReadCoord.X := 0;
         ReadCoord.Y := i;
-        ReadConsoleOutputCharacterW(StdOutHandle, Buffer, ConsoleInfo.dwSize.X*2, ReadCoord, nr);
+        ReadConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), Buffer, ConsoleInfo.dwSize.X*2, ReadCoord, nr);
 
         SetLength(S, nr);
         if nr > 0 then for j := 0 to (nr div 2)-1 do S[j] := WideChar(MakeWord(Ord(Buffer[j*2]), Ord(Buffer[j*2+1])));
