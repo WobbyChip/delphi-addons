@@ -106,7 +106,7 @@ procedure TFlatGroupBox.Paint;
 var
   memoryBitmap: TBitmap;
   borderRect, textBounds: TRect;
-  textHeight, textWidth: integer;
+  textHeight, textWidth, i: integer;
   Format: UINT;
 begin
   borderRect := ClientRect;
@@ -156,6 +156,7 @@ begin
 
     // Draw Border
     memoryBitmap.Canvas.Pen.Color := FBorderColor;
+    if (textWidth > 0) then i := 12 else i := 0;
     case FBorder of
       brFull:
         {$IFDEF DFS_COMPILER_4_UP}
@@ -172,11 +173,11 @@ begin
             Point(ClientRect.right-1, ClientRect.top + (textHeight div 2)),
             Point(ClientRect.left + 12 + textWidth, ClientRect.top + (textHeight div 2))]);
         {$ELSE}
-        memoryBitmap.Canvas.Polyline([Point(ClientRect.left + 5, ClientRect.top + (textHeight div 2)),
-          Point(ClientRect.left, ClientRect.top + (textHeight div 2)),
-          Point(ClientRect.left, ClientRect.bottom-1), Point(ClientRect.right-1, ClientRect.bottom-1),
-          Point(ClientRect.right-1, ClientRect.top + (textHeight div 2)),
-          Point(ClientRect.left + 12 + textWidth, ClientRect.top + (textHeight div 2))]);
+          memoryBitmap.Canvas.Polyline([Point(ClientRect.left + 5, ClientRect.top + (textHeight div 2)),
+            Point(ClientRect.left, ClientRect.top + (textHeight div 2)),
+            Point(ClientRect.left, ClientRect.bottom-1), Point(ClientRect.right-1, ClientRect.bottom-1),
+            Point(ClientRect.right-1, ClientRect.top + (textHeight div 2)),
+            Point(ClientRect.left + i + textWidth, ClientRect.top + (textHeight div 2))]);
         {$ENDIF}
       brOnlyTopLine:
         {$IFDEF DFS_COMPILER_4_UP}
