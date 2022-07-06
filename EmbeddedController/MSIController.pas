@@ -17,6 +17,8 @@ const
   EC_FANS_MODE_AUTO = $0C;
   EC_FANS_MODE_BASIC = $4C;
   EC_FANS_MODE_ADVANCED = $8C;
+  EC_GPU_TEMP_ADRRESS = $80;
+  EC_CPU_TEMP_ADRRESS = $68;
 
 type
   TModeType = (modeAuto, modeBasic, modeAdvanced);
@@ -29,6 +31,8 @@ type
       constructor Create;
       destructor Destroy; override;
 
+      function GetGPUTemp: Byte;
+      function GetCPUTemp: Byte;
       function GetBasicValue: Integer;
       function GetFanMode: TModeType;
       function isECLoaded: Boolean;
@@ -56,6 +60,20 @@ destructor TMSIController.Destroy;
 begin
   EC.Destroy;
   inherited Destroy;
+end;
+
+
+function TMSIController.GetGPUTemp: Byte;
+begin
+  Result := 255;
+  while not EC.readByte(EC_GPU_TEMP_ADRRESS, Result) or (Result = 255) do;
+end;
+
+
+function TMSIController.GetCPUTemp: Byte;
+begin
+  Result := 255;
+  while not EC.readByte(EC_CPU_TEMP_ADRRESS, Result) or (Result = 255) do;
 end;
 
 
