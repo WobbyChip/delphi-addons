@@ -13,6 +13,7 @@ DirectX/*.dcu
 EmbeddedWB/*.dcu
 FlatStyle/*.dcu
 PNGImage/*.dcu
+DDCCI/*.dcu
 ShellNotify/*.dcu
 WaveAudio/*.dcu
 XiControls/*.dcu
