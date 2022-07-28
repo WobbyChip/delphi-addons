@@ -48,8 +48,9 @@ type
       function GetDeviceKey(Index: Integer): String;
       function GetPhysicalMonitorHandle(Index: Integer): HMONITOR;
 
-      function PowerOff(DeviceID: String): Boolean;
+      function isSupported(DeviceID: String): Boolean;
       function PowerOn(DeviceID: String): Boolean;
+      function PowerOff(DeviceID: String): Boolean;
       function PowerToggle(DeviceID: String): Boolean;
     private
 
@@ -244,9 +245,10 @@ begin
 end;
 
 
-function TDDCCI.PowerOff(DeviceID: String): Boolean;
+function TDDCCI.isSupported(DeviceID: String): Boolean;
 var
   i: Integer;
+  j, k: DWORD;
 begin
   Result := False;
   i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
@@ -254,7 +256,7 @@ begin
   i := GetPhysicalMonitorHandle(i);
   if (i < 0) then Exit;
 
-  Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_OFF);
+  Result := GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, j, k);
   DestroyPhysicalMonitor(i);
 end;
 
@@ -270,6 +272,21 @@ begin
   if (i < 0) then Exit;
 
   Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_ON);
+  DestroyPhysicalMonitor(i);
+end;
+
+
+function TDDCCI.PowerOff(DeviceID: String): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
+  if (i < 0) then Exit;
+  i := GetPhysicalMonitorHandle(i);
+  if (i < 0) then Exit;
+
+  Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_OFF);
   DestroyPhysicalMonitor(i);
 end;
 
