@@ -3,27 +3,28 @@ unit DDCCI;
 interface
 
 uses
-  Windows, Classes, Registry, MultiMon, uDynamicData, Functions;
+  Windows, SysUtils, Classes, Registry, MultiMon, uDynamicData, Functions;
 
 type
   MC_VCP_CODE_TYPE = (MC_MOMENTARY, MC_SET_PARAMETER);
   PMC_VCP_CODE_TYPE = ^MC_VCP_CODE_TYPE;
 
 type
-  _PHYSICAL_MONITOR = packed record
+  PHYSICAL_MONITOR = packed record
     hPhysicalMonitor: HMONITOR;
     szPhysicalMonitorDescription: array[0..127] of WideChar;
   end;
-  TPhysicalMonitor = _PHYSICAL_MONITOR;
+  TPhysicalMonitor =  array of PHYSICAL_MONITOR;
+  PPhysicalMonitor = ^TPhysicalMonitor;
 
 type
-  TDisplayDevice = packed record
+  TDisplayDeviceW = packed record
     cb: DWORD;
-    DeviceName: array[0..31] of AnsiChar;
-    DeviceString: array[0..127] of AnsiChar;
+    DeviceName: array[0..31] of WideChar;
+    DeviceString: array[0..127] of WideChar;
     StateFlags: DWORD;
-    DeviceID: array[0..127] of AnsiChar;
-    DeviceKey: array[0..127] of AnsiChar;
+    DeviceID: array[0..127] of WideChar;
+    DeviceKey: array[0..127] of WideChar;
   end;
 
 const
@@ -37,7 +38,7 @@ type
       DynamicData: TDynamicData;
       constructor Create(doUpdate: Boolean);
       destructor Destroy; override;
-      procedure Update;
+      function Update: TDDCCI;
 
       function GetMonitorCount: Integer;
       function GetIndexByDeviceID(DeviceID: String): Integer;
@@ -60,15 +61,30 @@ implementation
 
 function SetVCPFeature(hMonitor: HMONITOR; bVCPCode: Byte; dwNewValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
 function GetVCPFeatureAndVCPFeatureReply(hMonitor: HMONITOR; bVCPCode: Byte; pvct: PMC_VCP_CODE_TYPE; var pdwCurrentValue, pdwMaximumValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
-function GetPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; pdwNumberOfPhysicalMonitors: DWORD; var pPhysicalMonitorArray: array of TPhysicalMonitor): BOOL; stdcall; external 'dxva2.dll';
+function GetPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; pdwNumberOfPhysicalMonitors: DWORD; pPhysicalMonitorArray: PPhysicalMonitor): BOOL; stdcall; external 'dxva2.dll';
 function GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; var pdwNumberOfPhysicalMonitors: DWORD): BOOL; stdcall; external 'dxva2.dll';
 function DestroyPhysicalMonitor(hMonitor: HMONITOR): BOOL; stdcall; external 'dxva2.dll';
-function EnumDisplayDevicesA(Unused: Pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDevice; dwFlags: DWORD): BOOL; stdcall; external user32;
+function EnumDisplayDevicesW(Unused: Pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceW; dwFlags: DWORD): BOOL; stdcall; external user32;
 
 
-function EnumMonitorsProc(hmon: HMONITOR; dc: HDC; Rect: PRect; Data: Pointer): Boolean; stdcall;
+function EnumMonitorsProc(MonitorHandle: HMONITOR; dc: HDC; Rect: PRect; Data: Pointer): Boolean; stdcall;
+var
+  i, j: Integer;
+  pMonitorsCount: DWORD;
+  pMonitors: PPhysicalMonitor;
+  hPhysicalMonitor: HMONITOR;
 begin
-  TList(Data).Add(Pointer(hmon));
+  GetNumberOfPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount);
+  pMonitors := AllocMem(pMonitorsCount * SizeOf(PHYSICAL_MONITOR));
+  GetPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount, pMonitors);
+
+  for i := 0 to pMonitorsCount-1 do begin
+    hPhysicalMonitor := TPhysicalMonitor(pMonitors)[i].hPhysicalMonitor;
+    j := TDynamicData(Data).FindIndex(0, 'hPhysicalMonitor', -1);
+    TDynamicData(Data).SetValue(j, 'hPhysicalMonitor', hPhysicalMonitor);
+  end;
+
+  FreeMem(pMonitors);
   Result := True;
 end;
 
@@ -120,40 +136,58 @@ end;
 constructor TDDCCI.Create(doUpdate: Boolean);
 begin
   inherited Create;
-  DynamicData := TDynamicData.Create(['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey']);
+  DynamicData := TDynamicData.Create(['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey', 'hPhysicalMonitor']);
   if doUpdate then self.Update;
 end;
 
 
 destructor TDDCCI.Destroy;
+var
+  i: Integer;
+  hPhysicalMonitor: HMONITOR;
 begin
+  for i := 0 to DynamicData.GetLength-1 do begin
+    hPhysicalMonitor := DynamicData.GetValue(0, 'hPhysicalMonitor');
+    DestroyPhysicalMonitor(hPhysicalMonitor);
+  end;
+
   DynamicData.Destroy;
   inherited Destroy;
 end;
 
 
-procedure TDDCCI.Update;
+function TDDCCI.Update: TDDCCI;
 var
-  dd, md: TDisplayDevice;
+  i: Integer;
+  hPhysicalMonitor: HMONITOR;
+  dd, md: TDisplayDeviceW;
   deviceIndex, monitorIndex: Integer;
   FriendlyName: String;
 begin
+  for i := 0 to DynamicData.GetLength-1 do begin
+    hPhysicalMonitor := DynamicData.GetValue(0, 'hPhysicalMonitor');
+    DestroyPhysicalMonitor(hPhysicalMonitor);
+  end;
+
   DynamicData.SetLength(0);
   dd.cb := SizeOf(dd);
   md.cb := SizeOf(md);
   deviceIndex := 0;
 
-  while EnumDisplayDevicesA(nil, deviceIndex, dd, 0) do begin
+  while EnumDisplayDevicesW(nil, deviceIndex, dd, 0) do begin
     monitorIndex := 0;
 
-    while EnumDisplayDevicesA(@dd.deviceName, monitorIndex, md, 0) do begin
+    while EnumDisplayDevicesW(@dd.deviceName, monitorIndex, md, 0) do begin
       FriendlyName := GetMonitorFriendlyName(md.DeviceID);
-      DynamicData.CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceID), String(md.DeviceKey)]);
+      DynamicData.CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey', 'hPhysicalMonitor'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceID), String(md.DeviceKey), -1]);
       Inc(monitorIndex);
     end;
 
     Inc(deviceIndex);
   end;
+
+  EnumDisplayMonitors(0, nil, @EnumMonitorsProc, LongInt(DynamicData));
+  Result := self;
 end;
 
 
@@ -210,101 +244,61 @@ end;
 
 
 function TDDCCI.GetPhysicalMonitorHandle(Index: Integer): HMONITOR;
-var
-  i, j, k: Integer;
-  DisplayMonitors: TList;
-  MonitorHandle: HMONITOR;
-  PhysicalMonitorsCount: DWORD;
-  PhysicalMonitors: array of TPhysicalMonitor;
 begin
   Result := -1;
   if (Index >= DynamicData.GetLength) or (Index < 0) then Exit;
-  DisplayMonitors := TList.Create;
-  EnumDisplayMonitors(0, nil, @EnumMonitorsProc, LongInt(DisplayMonitors));
-  k := 0;
-
-  for i := 0 to DisplayMonitors.Count-1 do begin
-    MonitorHandle := HMONITOR(DisplayMonitors.Items[i]);
-    GetNumberOfPhysicalMonitorsFromHMONITOR(MonitorHandle, PhysicalMonitorsCount);
-    SetLength(PhysicalMonitors, PhysicalMonitorsCount);
-    GetPhysicalMonitorsFromHMONITOR(MonitorHandle, PhysicalMonitorsCount, PhysicalMonitors);
-
-    for j := 0 to PhysicalMonitorsCount-1 do begin
-      if (k = Index) then begin
-        Result := PhysicalMonitors[j].hPhysicalMonitor;
-        DisplayMonitors.Destroy;
-        Exit;
-      end;
-
-      Inc(k);
-      DestroyPhysicalMonitor(PhysicalMonitors[j].hPhysicalMonitor);
-    end;
-  end;
-
-  DisplayMonitors.Destroy;
+  Result := DynamicData.GetValue(Index, 'hPhysicalMonitor');
 end;
 
 
 function TDDCCI.isSupported(DeviceID: String): Boolean;
 var
-  i: Integer;
+  i: Variant;
   j, k: DWORD;
 begin
   Result := False;
-  i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
-  if (i < 0) then Exit;
-  i := GetPhysicalMonitorHandle(i);
-  if (i < 0) then Exit;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
 
   Result := GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, j, k);
-  DestroyPhysicalMonitor(i);
 end;
 
 
 function TDDCCI.PowerOn(DeviceID: String): Boolean;
 var
-  i: Integer;
+  i: Variant;
 begin
   Result := False;
-  i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
-  if (i < 0) then Exit;
-  i := GetPhysicalMonitorHandle(i);
-  if (i < 0) then Exit;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
 
   Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_ON);
-  DestroyPhysicalMonitor(i);
 end;
 
 
 function TDDCCI.PowerOff(DeviceID: String): Boolean;
 var
-  i: Integer;
+  i: Variant;
 begin
   Result := False;
-  i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
-  if (i < 0) then Exit;
-  i := GetPhysicalMonitorHandle(i);
-  if (i < 0) then Exit;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
 
   Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_OFF);
-  DestroyPhysicalMonitor(i);
 end;
 
 
 function TDDCCI.PowerToggle(DeviceID: String): Boolean;
 var
-  i: Integer;
+  i: Variant;
   CurrentValue, MaximumValue: DWORD;
 begin
   Result := False;
-  i := DynamicData.FindIndex(0, 'DeviceID', DeviceID);
-  if (i < 0) then Exit;
-  i := GetPhysicalMonitorHandle(i);
-  if (i < 0) then Exit;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
 
   GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, CurrentValue, MaximumValue);
   Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, Q((CurrentValue <> DDCCI_POWER_ON), DDCCI_POWER_ON, DDCCI_POWER_OFF));
-  DestroyPhysicalMonitor(i);
 end;
 
 end.

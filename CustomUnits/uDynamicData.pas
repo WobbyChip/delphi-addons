@@ -50,6 +50,7 @@ type
       lOptions: TKBDynamicOptions;
       DynamicKeys: array of WideString;
       DynamicData: TDynamicList_;
+      Null: Variant;
 
       constructor Create(DynamicKeys: array of WideString);
       destructor Destroy; override;
@@ -109,6 +110,7 @@ var
   i: Integer;
 begin
   inherited Create;
+  self.Null := Variants.Null;
   System.SetLength(self.DynamicKeys, Length(DynamicKeys));
 
   lOptions := [
