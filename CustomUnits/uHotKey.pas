@@ -9,7 +9,7 @@ const
   hkExclusions = [144, 111, 45, 40, 39, 38, 37, 36, 35, 34, 33];
 
 type
-  TProcedure = procedure(Key, ShortCut: Integer; CustomValue: Variant);
+  THotkeyCallback = procedure(Key, ShortCut: Integer; CustomValue: Variant);
 
 type
   PCallback = ^TCallback;
@@ -17,7 +17,7 @@ type
     Key: Integer;
     ShortCut: Integer;
     CustomValue: Variant;
-    Callback: TProcedure;
+    Callback: THotkeyCallback;
   end;
 
 var
@@ -29,15 +29,15 @@ function ShortCutToKey(ShortCut: TShortCut): Integer;
 function ShortCutToModifiers(ShortCut: TShortCut): Integer;
 function ModifiersKeyToShortCut(fsModifiers, vk: Cardinal): TShortCut;
 
-function SetShortCut(Proc: TProcedure; ShortCut: TShortCut): Integer; overload;
-function SetShortCut(Proc: TProcedure; ShortCut: TShortCut; CustomValue: Variant): Integer; overload;
+function SetShortCut(Proc: THotkeyCallback; ShortCut: TShortCut): Integer; overload;
+function SetShortCut(Proc: THotkeyCallback; ShortCut: TShortCut; CustomValue: Variant): Integer; overload;
 function ChangeShortCut(Key: Integer; ShortCut: TShortCut): Boolean;
 function ShortCutToHotKey(ShortCut: Integer): Integer;
 
-function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal): Integer; overload;
-function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer; overload;
+function SetHotKey(Proc: THotkeyCallback; fsModifiers, vk: Cardinal): Integer; overload;
+function SetHotKey(Proc: THotkeyCallback; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer; overload;
 function ChangeHotKey(Key: Integer; fsModifiers, vk: Cardinal): Boolean;
-function ChangeCallback(Key: Integer; Proc: TProcedure): Boolean;
+function ChangeCallback(Key: Integer; Proc: THotkeyCallback): Boolean;
 function RemoveHotKey(Key: Integer): Boolean;
 function DisableHotKey(Key: Integer): Boolean;
 function EnableHotKey(Key: Integer): Boolean;
@@ -82,25 +82,25 @@ begin
 end;
 
 
-function SetShortCut(Proc: TProcedure; ShortCut: TShortCut): Integer;
+function SetShortCut(Proc: THotkeyCallback; ShortCut: TShortCut): Integer;
 begin
   Result := SetShortCut(Proc, ShortCut, Null);
 end;
 
 
-function SetShortCut(Proc: TProcedure; ShortCut: TShortCut; CustomValue: Variant): Integer;
+function SetShortCut(Proc: THotkeyCallback; ShortCut: TShortCut; CustomValue: Variant): Integer;
 begin
   Result := SetHotKey(Proc, ShortCutToModifiers(ShortCut), ShortCutToKey(ShortCut), CustomValue);
 end;
 
 
-function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal): Integer;
+function SetHotKey(Proc: THotkeyCallback; fsModifiers, vk: Cardinal): Integer;
 begin
   Result := SetHotKey(Proc, fsModifiers, vk, Null);
 end;
 
 
-function SetHotKey(Proc: TProcedure; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer;
+function SetHotKey(Proc: THotkeyCallback; fsModifiers, vk: Cardinal; CustomValue: Variant): Integer;
 var
   Callback: PCallback;
 begin
@@ -116,7 +116,7 @@ begin
 end;
 
 
-function ChangeCallback(Key: Integer; Proc: TProcedure): Boolean;
+function ChangeCallback(Key: Integer; Proc: THotkeyCallback): Boolean;
 var
   i: Integer;
 begin

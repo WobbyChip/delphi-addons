@@ -3,7 +3,7 @@ unit uQueryShutdown;
 interface
 
 uses
-  SysUtils, Windows, Messages, Forms;
+  SysUtils, Windows, Classes, Messages, Forms;
 
 type
   TBlockShutdown = class
@@ -16,16 +16,17 @@ type
 
 type
   TQueryShutdownCallback = procedure(BS: TBlockShutdown);
+  PQueryShutdownCallback = ^TQueryShutdownCallback;
 
 var
   BlockShutdown: TBlockShutdown;
-  QueryShutdownCallback: TQueryShutdownCallback;
-  LWndClass: TWndClass;
+  ShutdownCallbacks: TList;
   WinHandle: HWND;
   ThreadID: LongWord = 0;
 
 
-procedure SetQueryShutdown(Callback: TQueryShutdownCallback);
+procedure AddShutdownCallback(Callback: TQueryShutdownCallback);
+procedure RemoveShutdownCallback(Callback: TQueryShutdownCallback);
 
 implementation
 
@@ -35,11 +36,11 @@ function ShutdownBlockReasonDestroy(hWnd: HWND): BOOL; stdcall; external user32;
 
 
 function WndProc(hWnd, Msg: Longint; wParam: WPARAM; lParam: LPARAM): Longint; stdcall;
+var
+  i: Integer;
 begin
-  //WriteLn('Message -> ' + IntToStr(Msg) + ' | lParam -> ' + IntToStr(lParam) + ' | wParam -> ' + IntToStr(wParam));
-
-  if (Msg = WM_QUERYENDSESSION) then begin
-    if Assigned(QueryShutdownCallback) then QueryShutdownCallback(BlockShutdown);
+  if (Msg = WM_QUERYENDSESSION) and (ShutdownCallbacks.Count > 0) then begin
+    for i := 0 to ShutdownCallbacks.Count-1 do TQueryShutdownCallback(ShutdownCallbacks.Items[i])(BlockShutdown);
     Result := lResult(False);
     Exit;
   end;
@@ -51,6 +52,7 @@ end;
 procedure MessageLoop;
 var
   Msg: TMsg;
+  LWndClass: TWndClass;
 begin
   FillChar(LWndClass, SizeOf(LWndClass), 0);
   LWndClass.hInstance := HInstance;
@@ -68,21 +70,15 @@ begin
 end;
 
 
-procedure SetQueryShutdown(Callback: TQueryShutdownCallback);
+procedure AddShutdownCallback(Callback: TQueryShutdownCallback);
 begin
-  if Assigned(Callback) then begin
-    QueryShutdownCallback := Callback;
-    if ThreadID = 0 then BlockShutdown := TBlockShutdown.Create;
-    if ThreadID = 0 then ThreadID := BeginThread(nil, 0, Addr(MessageLoop), nil, 0, ThreadID);
-    ChangeWindowMessageFilter(WM_QUERYENDSESSION, 1);
-  end else begin
-    BlockShutdown.Destroy;
-    QueryShutdownCallback := nil;
-    TerminateThread(ThreadID, 0);
-    ThreadID := 0;
-    DestroyWindow(WinHandle);
-    Windows.UnregisterClass(LWndClass.lpszClassName, HInstance);
-  end;
+  ShutdownCallbacks.Add(@Callback);
+end;
+
+
+procedure RemoveShutdownCallback(Callback: TQueryShutdownCallback);
+begin
+  ShutdownCallbacks.Remove(@Callback);
 end;
 
 
@@ -112,4 +108,8 @@ end;
 
 initialization
   Randomize;
+  ShutdownCallbacks := TList.Create;
+  BlockShutdown := TBlockShutdown.Create;
+  BeginThread(nil, 0, Addr(MessageLoop), nil, 0, ThreadID);
+  ChangeWindowMessageFilter(WM_QUERYENDSESSION, 1);
 end.
