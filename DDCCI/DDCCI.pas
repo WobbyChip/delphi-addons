@@ -18,6 +18,15 @@ type
   PPhysicalMonitor = ^TPhysicalMonitor;
 
 type
+  TMonitorInfoEx = record
+    cbSize: DWORD;
+    rcMonitor: TRect;
+    rcWork: TRect;
+    dwFlags: DWORD;
+    szDevice: array[0..CCHDEVICENAME-1] of AnsiChar;
+  end;
+
+type
   TDisplayDeviceW = packed record
     cb: DWORD;
     DeviceName: array[0..31] of WideChar;
@@ -64,29 +73,7 @@ function GetVCPFeatureAndVCPFeatureReply(hMonitor: HMONITOR; bVCPCode: Byte; pvc
 function GetPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; pdwNumberOfPhysicalMonitors: DWORD; pPhysicalMonitorArray: PPhysicalMonitor): BOOL; stdcall; external 'dxva2.dll';
 function GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; var pdwNumberOfPhysicalMonitors: DWORD): BOOL; stdcall; external 'dxva2.dll';
 function DestroyPhysicalMonitor(hMonitor: HMONITOR): BOOL; stdcall; external 'dxva2.dll';
-function EnumDisplayDevicesW(Unused: Pointer; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceW; dwFlags: DWORD): BOOL; stdcall; external user32;
-
-
-function EnumMonitorsProc(MonitorHandle: HMONITOR; dc: HDC; Rect: PRect; Data: Pointer): Boolean; stdcall;
-var
-  i, j: Integer;
-  pMonitorsCount: DWORD;
-  pMonitors: PPhysicalMonitor;
-  hPhysicalMonitor: HMONITOR;
-begin
-  GetNumberOfPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount);
-  pMonitors := AllocMem(pMonitorsCount * SizeOf(PHYSICAL_MONITOR));
-  GetPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount, pMonitors);
-
-  for i := 0 to pMonitorsCount-1 do begin
-    hPhysicalMonitor := TPhysicalMonitor(pMonitors)[i].hPhysicalMonitor;
-    j := TDynamicData(Data).FindIndex(0, 'hPhysicalMonitor', -1);
-    TDynamicData(Data).SetValue(j, 'hPhysicalMonitor', hPhysicalMonitor);
-  end;
-
-  FreeMem(pMonitors);
-  Result := True;
-end;
+function EnumDisplayDevicesW(lpDevice: PWideChar; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceW; dwFlags: DWORD): BOOL; stdcall; external user32;
 
 
 function GetMonitorFriendlyName(DeviceID: String): String;
@@ -133,6 +120,44 @@ begin
 end;
 
 
+function EnumMonitorsProc(MonitorHandle: HMONITOR; hDC: HDC; Rect: PRect; Data: Pointer): Boolean; stdcall;
+var
+  i, j: Integer;
+  md: TDisplayDeviceW;
+  MonitorInfo: TMonitorInfoEx;
+  monitorIndex: Integer;
+  szDevice, FriendlyName: String;
+  pMonitorsCount: DWORD;
+  pMonitors: PPhysicalMonitor;
+  hPhysicalMonitor: HMONITOR;
+begin
+  md.cb := SizeOf(md);
+  MonitorInfo.cbSize := SizeOf(MonitorInfo);
+  GetMonitorInfo(MonitorHandle, @MonitorInfo);
+  szDevice := MonitorInfo.szDevice;
+  monitorIndex := 0;
+
+  while EnumDisplayDevicesW(PWideChar(WideString(szDevice)), monitorIndex, md, 0) do begin
+    FriendlyName := GetMonitorFriendlyName(md.DeviceID);
+    TDynamicData(Data).CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey', 'hPhysicalMonitor'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceID), String(md.DeviceKey), -1]);
+    Inc(monitorIndex);
+  end;
+
+  GetNumberOfPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount);
+  pMonitors := AllocMem(pMonitorsCount * SizeOf(PHYSICAL_MONITOR));
+  GetPhysicalMonitorsFromHMONITOR(MonitorHandle, pMonitorsCount, pMonitors);
+
+  for i := 0 to pMonitorsCount-1 do begin
+    hPhysicalMonitor := TPhysicalMonitor(pMonitors)[i].hPhysicalMonitor;
+    j := TDynamicData(Data).FindIndex(0, 'hPhysicalMonitor', -1);
+    TDynamicData(Data).SetValue(j, 'hPhysicalMonitor', hPhysicalMonitor);
+  end;
+
+  FreeMem(pMonitors);
+  Result := True;
+end;
+
+
 constructor TDDCCI.Create(doUpdate: Boolean);
 begin
   inherited Create;
@@ -160,9 +185,6 @@ function TDDCCI.Update: TDDCCI;
 var
   i: Integer;
   hPhysicalMonitor: HMONITOR;
-  dd, md: TDisplayDeviceW;
-  deviceIndex, monitorIndex: Integer;
-  FriendlyName: String;
 begin
   for i := 0 to DynamicData.GetLength-1 do begin
     hPhysicalMonitor := DynamicData.GetValue(0, 'hPhysicalMonitor');
@@ -170,22 +192,6 @@ begin
   end;
 
   DynamicData.SetLength(0);
-  dd.cb := SizeOf(dd);
-  md.cb := SizeOf(md);
-  deviceIndex := 0;
-
-  while EnumDisplayDevicesW(nil, deviceIndex, dd, 0) do begin
-    monitorIndex := 0;
-
-    while EnumDisplayDevicesW(@dd.deviceName, monitorIndex, md, 0) do begin
-      FriendlyName := GetMonitorFriendlyName(md.DeviceID);
-      DynamicData.CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey', 'hPhysicalMonitor'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceID), String(md.DeviceKey), -1]);
-      Inc(monitorIndex);
-    end;
-
-    Inc(deviceIndex);
-  end;
-
   EnumDisplayMonitors(0, nil, @EnumMonitorsProc, LongInt(DynamicData));
   Result := self;
 end;
