@@ -157,7 +157,7 @@ type
     dwDataSize: LongInt;
   end;
 
-function IsWow64Process(hProcess: THandle; var Wow64Process: Boolean): Boolean; stdcall; external 'kernel32.dll';
+function IsWow64Process(hProcess: THandle; var Wow64Process: Boolean): Boolean; stdcall; external kernel32;
 function CheckTokenMembership(TokenHandle: THandle; SIdToCheck: PSID; var IsMember: Boolean): Boolean; StdCall; external AdvApi32;
 function NtQuerySystemInformation(SystemInformationClass: DWORD; SystemInformation: Pointer; SystemInformationLength: DWORD; ReturnLength: PDWORD): Cardinal; stdcall; external 'ntdll';
 function GetFirmwareEnvironmentVariableA(lpName, lpGuid: LPCSTR; pBuffer: Pointer; nSize: DWORD): DWORD; stdcall; external kernel32 name 'GetFirmwareEnvironmentVariableA';
@@ -166,7 +166,8 @@ function NtRaiseHardError(ErrorStatus, NumberOfParameters, UnicodeStringParamete
 function RtlSetProcessIsCritical(unu: DWORD; Proc: Pointer; doi: DWORD): LongInt; stdcall; external 'ntdll.dll';
 function GetFontResourceInfoW(lpszFilename: PWideChar; var cbBuffer: DWORD; lpBuffer: PWideChar; dwQueryType: DWORD): DWORD; stdcall; external 'gdi32.dll' name 'GetFontResourceInfoW';
 function GetConsoleWindow: HWND; stdcall; external kernel32;
-function AttachConsole(dwProcessID: Integer): Boolean; stdcall; external 'kernel32.dll';
+function AttachConsole(dwProcessID: Integer): Boolean; stdcall; external kernel32;
+function GetTickCount64: Int64; stdcall; external kernel32;
 
 const
   CResFileHeader: array [0..7] of Cardinal = ($00000000, $00000020, $0000FFFF, $0000FFFF, $00000000, $00000000, $00000000, $00000000);
