@@ -44,7 +44,6 @@ const
 type
   TDDCCI = class
     public
-      DynamicData: TDynamicData;
       constructor Create(doUpdate: Boolean);
       destructor Destroy; override;
       function Update: TDDCCI;
@@ -62,16 +61,20 @@ type
       function PowerOn(DeviceID: String): Boolean;
       function PowerOff(DeviceID: String): Boolean;
       function PowerToggle(DeviceID: String): Boolean;
+      function GetBrightness(DeviceID: String): Integer;
+      function SetBrightness(DeviceID: String; Value: Integer): Boolean;
     private
-
+      DynamicData: TDynamicData;
     end;
 
 implementation
 
-function SetVCPFeature(hMonitor: HMONITOR; bVCPCode: Byte; dwNewValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
-function GetVCPFeatureAndVCPFeatureReply(hMonitor: HMONITOR; bVCPCode: Byte; pvct: PMC_VCP_CODE_TYPE; var pdwCurrentValue, pdwMaximumValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
 function GetPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; pdwNumberOfPhysicalMonitors: DWORD; pPhysicalMonitorArray: PPhysicalMonitor): BOOL; stdcall; external 'dxva2.dll';
 function GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor: HMONITOR; var pdwNumberOfPhysicalMonitors: DWORD): BOOL; stdcall; external 'dxva2.dll';
+function GetVCPFeatureAndVCPFeatureReply(hMonitor: HMONITOR; bVCPCode: Byte; pvct: PMC_VCP_CODE_TYPE; var pdwCurrentValue, pdwMaximumValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
+function SetVCPFeature(hMonitor: HMONITOR; bVCPCode: Byte; dwNewValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
+function GetMonitorBrightness(hMonitor: HMONITOR; var pdwMinimumBrightness, pdwCurrentValue, pdwMaximumValue: DWORD): BOOL; stdcall; external 'dxva2.dll';
+function SetMonitorBrightness(hMonitor: HMONITOR; dwNewBrightness: DWORD): BOOL; stdcall; external 'dxva2.dll';
 function DestroyPhysicalMonitor(hMonitor: HMONITOR): BOOL; stdcall; external 'dxva2.dll';
 function EnumDisplayDevicesW(lpDevice: PWideChar; iDevNum: DWORD; var lpDisplayDevice: TDisplayDeviceW; dwFlags: DWORD): BOOL; stdcall; external user32;
 
@@ -305,6 +308,35 @@ begin
 
   GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, CurrentValue, MaximumValue);
   Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, Q((CurrentValue <> DDCCI_POWER_ON), DDCCI_POWER_ON, DDCCI_POWER_OFF));
+end;
+
+
+function TDDCCI.GetBrightness(DeviceID: String): Integer;
+var
+  i: Variant;
+  MinimumValue, MaximumValue: DWORD;
+  CurrentValue: DWORD;
+begin
+  Result := -1;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
+
+  if not GetMonitorBrightness(i, MinimumValue, CurrentValue, MaximumValue) then Exit;
+  Result := CurrentValue;
+end;
+
+
+function TDDCCI.SetBrightness(DeviceID: String; Value: Integer): Boolean;
+var
+  i: Variant;
+begin
+  Result := False;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
+
+  if (Value < 0) then Value := 0;
+  if (Value > 100) then Value := 100;
+  Result := SetMonitorBrightness(i, Value);
 end;
 
 end.
