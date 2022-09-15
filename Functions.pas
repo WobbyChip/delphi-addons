@@ -198,6 +198,7 @@ const
   IOCTL_DISK_GET_DRIVE_LAYOUT_EX = $00070050;
 
 function Q(b: Boolean; v1, v2: Variant): Variant;
+function Is64Bit: Boolean;
 function InstanceExists(S: WideString): Boolean;
 procedure AllocInvisibleConsole(ConsoleTitle: WideString; ConsoleIcon: HICON);
 procedure Wait(Millisecs: Integer);
@@ -324,6 +325,14 @@ begin
   if b then Result := v1 else Result := v2;
 end;
 //Question operator function
+
+
+//Is64Bit
+function Is64Bit: Boolean;
+begin
+  IsWow64Process(GetCurrentProcess, Result);
+end;
+//Is64Bit
 
 
 //InstanceExists
