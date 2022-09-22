@@ -66,14 +66,14 @@ end;
 function TMSIController.GetGPUTemp: Byte;
 begin
   Result := 255;
-  while not EC.readByte(EC_GPU_TEMP_ADRRESS, Result) or (Result = 255) do;
+  while (not EC.readByte(EC_GPU_TEMP_ADRRESS, Result)) or (Result = 255) do;
 end;
 
 
 function TMSIController.GetCPUTemp: Byte;
 begin
   Result := 255;
-  while not EC.readByte(EC_CPU_TEMP_ADRRESS, Result) or (Result = 255) do;
+  while (not EC.readByte(EC_CPU_TEMP_ADRRESS, Result)) or (Result = 255) do;
 end;
 
 
@@ -81,7 +81,7 @@ function TMSIController.GetBasicValue: Integer;
 var
   bResult: Byte;
 begin
-  while not EC.readByte(EC_FANS_SPEED_ADRRESS, bResult) or (bResult = 255) do;
+  while (not EC.readByte(EC_FANS_SPEED_ADRRESS, bResult)) or (bResult = 255) do;
   if bResult >= 128 then Result := 128 - bResult else Result := bResult;
 end;
 
@@ -91,7 +91,7 @@ var
   bResult: Byte;
 begin
   Result := modeAuto;
-  while not EC.readByte(EC_FANS_ADRRESS, bResult) or (bResult = 255) do;
+  while (not EC.readByte(EC_FANS_ADRRESS, bResult)) or (bResult = 255) do;
 
   case bResult of
     EC_FANS_MODE_AUTO: Result := modeAuto;
@@ -111,7 +111,7 @@ function TMSIController.isCoolerBoostEnabled: Boolean;
 var
   bResult: Byte;
 begin
-  while not EC.readByte(EC_CB_ADDRESS, bResult) or (bResult = 255) do;
+  while (not EC.readByte(EC_CB_ADDRESS, bResult)) or (bResult = 255) do;
   Result := (bResult >= EC_CB_ON);
 end;
 
