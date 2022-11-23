@@ -211,8 +211,13 @@ var
   MemoryStream: TMemoryStream;
 begin
   MemoryStream := TMemoryStream.Create;
-  WriteFileToStream(MemoryStream, FileName);
-  Result := self.Load(MemoryStream, Options);
+  Result := False;
+
+  if (GetFileSize(FileName) > 0) then begin
+    WriteFileToStream(MemoryStream, FileName);
+    Result := self.Load(MemoryStream, Options);
+  end;
+
   if (not Result) and (loOFDelete in Options) then DeleteFileW(PWideChar(FileName));
   MemoryStream.Free;
 end;
