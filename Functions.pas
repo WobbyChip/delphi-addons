@@ -223,6 +223,7 @@ procedure SaveByteArray_const(const ArrayOfByte: array of byte; FileName: WideSt
 
 function GetActiveMonitor: Integer;
 function IsAdmin: Boolean;
+function IsAdminAccount: Boolean;
 function IsUefiFirmwareType: Boolean;
 function IsGPT(Drive: Integer): Boolean;
 function DiskSignature(Drive: Integer): DWORD;
@@ -726,21 +727,56 @@ end;
 //IsAdmin
 function IsAdmin: Boolean;
 const
-  DOMAIN_ALIAS_RID_ADMINS = $00000220;
+  SECURITY_NT_AUTHORITY: TSIDIdentifierAuthority = (Value: (0, 0, 0, 0, 0, 5));
   SECURITY_BUILTIN_DOMAIN_RID = $00000020;
-  SECURITY_NT_AUTHORITY: TSIDIdentifierAuthority = (Value: (0,0,0,0,0,5));
+  DOMAIN_ALIAS_RID_ADMINS = $00000220;
 var
-  Admin: Boolean;
-  AdmGroup: PSID;
+  psidAdministrators: PSID;
 Begin
-  Admin := AllocateAndInitializeSid(SECURITY_NT_AUTHORITY, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0,0,0,0,0,0, AdmGroup);
-  if (Admin) then begin
-    if (not CheckTokenMembership(0, AdmGroup, Admin)) then Admin := False;
-    FreeSid(AdmGroup);
-  end;
-  Result := Admin;
+  Result := AllocateAndInitializeSid(SECURITY_NT_AUTHORITY, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0,0,0,0,0,0, psidAdministrators);
+  if Result and (not CheckTokenMembership(0, psidAdministrators, Result)) then Result := False;
+  FreeSid(psidAdministrators);
 end;
 //IsAdmin
+
+
+//IsAdminAccount
+function IsAdminAccount: Boolean;
+const
+  SECURITY_NT_AUTHORITY: TSIDIdentifierAuthority = (Value: (0, 0, 0, 0, 0, 5));
+  SECURITY_BUILTIN_DOMAIN_RID = $00000020;
+  DOMAIN_ALIAS_RID_ADMINS = $00000220;
+var
+  hAccessToken: THandle;
+  ptgGroups: PTokenGroups;
+  dwInfoBufferSize: DWORD;
+  psidAdministrators: PSID;
+  i: Integer;
+  bSuccess: BOOL;
+begin
+  Result := False;
+  bSuccess := OpenThreadToken(GetCurrentThread, TOKEN_QUERY, True, hAccessToken);
+  if (not bSuccess) and (GetLastError = ERROR_NO_TOKEN) then bSuccess := OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, hAccessToken);
+  if (not bSuccess) then Exit;
+
+  GetMem(ptgGroups, 1024);
+  bSuccess := GetTokenInformation(hAccessToken, TokenGroups, ptgGroups, 1024, dwInfoBufferSize);
+  CloseHandle(hAccessToken);
+
+  if bSuccess then begin
+    AllocateAndInitializeSid(SECURITY_NT_AUTHORITY, 2, SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, psidAdministrators);
+
+    for i := 0 to ptgGroups.GroupCount-1 do begin
+      Result := EqualSid(psidAdministrators, ptgGroups.Groups[i].Sid);
+      if Result then Break;
+    end;
+
+    FreeSid(psidAdministrators);
+  end;
+
+  FreeMem(ptgGroups);
+end;
+//IsAdminAccount
 
 
 //IsUefiFirmwareType
