@@ -252,8 +252,9 @@ function ResumeProcess(PID: DWORD): Boolean;
 function IsSuspended(PID: DWORD): Boolean;
 function GetCommandLineFromPID(PID: DWORD): WideString;
 function GetPathFromPID(PID: DWORD): WideString;
+function GetExecuteableFromPID(PID: DWORD): WideString;
 function GetMainWindowFromPID(PID: DWORD): DWORD;
-function GetProcessFromHWND(hwnd: HWND): WideString;
+function GetPIDFromHWND(hwnd: HWND): DWORD;
 
 procedure CompressStream(MemoryStream: TMemoryStream);
 procedure DecompressStream(MemoryStream: TMemoryStream);
@@ -1242,6 +1243,22 @@ end;
 //GetPathFromPID
 
 
+//GetExecuteableFromPID
+function GetExecuteableFromPID(PID: DWORD): WideString;
+var
+  hProcess: THandle;
+  Path: array[0..4095] of WideChar;
+begin
+  hProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ, False, PID);
+  if hProcess = 0 then Exit;
+
+  if (hProcess = 0) then Exit;
+  if GetModuleFileNameExW(hProcess, 0, @Path[0], Length(Path)) <> 0 then Result := WideExtractFileName(Path);
+  CloseHandle(hProcess);
+end;
+//GetExecuteableFromPID
+
+
 //GetMainWindowFromPID
 function GetMainWindowFromPID(PID: DWORD): DWORD;
 type
@@ -1269,22 +1286,12 @@ end;
 //GetMainWindowFromPID
 
 
-//GetProcessFromHWND
-function GetProcessFromHWND(hwnd: HWND): WideString;
-var
-  pid: DWORD;
-  hProcess: THandle;
-  Path: array[0..4095] of WideChar;
+//GetPIDFromHWND
+function GetPIDFromHWND(hwnd: HWND): DWORD;
 begin
-  Result := '';
-  GetWindowThreadProcessId(hwnd, pid);
-  hProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ, False, pid);
-
-  if (hProcess = 0) then Exit;
-  if GetModuleFileNameExW(hProcess, 0, @Path[0], Length(Path)) <> 0 then Result := WideExtractFileName(Path);
-  CloseHandle(hProcess);
+  GetWindowThreadProcessId(hwnd, Result);
 end;
-//GetProcessFromHWND
+//GetPIDFromHWND
 
 
 //CompressStream
