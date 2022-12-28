@@ -256,6 +256,7 @@ function GetPathFromPID(PID: DWORD): WideString;
 function GetExecuteableFromPID(PID: DWORD): WideString;
 function GetMainWindowFromPID(PID: DWORD): DWORD;
 function GetPIDFromHWND(hwnd: HWND): DWORD;
+function GetPIDFromProcess(FileName: WideString): DWORD;
 
 procedure CompressStream(MemoryStream: TMemoryStream);
 procedure DecompressStream(MemoryStream: TMemoryStream);
@@ -1328,6 +1329,30 @@ begin
   GetWindowThreadProcessId(hwnd, Result);
 end;
 //GetPIDFromHWND
+
+
+
+//GetPIDFromProcess
+function GetPIDFromProcess(FileName: WideString): DWORD;
+var
+  ContinueLoop: Boolean;
+  SnapshotHandle: THandle;
+  ProcessEntry: TProcessEntry32W;
+begin
+  Result := 0;
+  SnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  ProcessEntry.dwSize := SizeOf(ProcessEntry);
+  ContinueLoop := Process32FirstW(SnapshotHandle, ProcessEntry);
+
+  while ContinueLoop do begin
+    if (WideUpperCase(WideExtractFileName(ProcessEntry.szExeFile)) = WideUpperCase(FileName))
+    or (WideUpperCase(ProcessEntry.szExeFile) = WideUpperCase(FileName)) then Result := ProcessEntry.th32ProcessID;
+    ContinueLoop := Process32NextW(SnapshotHandle, ProcessEntry);
+  end;
+
+  CloseHandle(SnapshotHandle);
+end;
+//GetPIDFromProcess
 
 
 //CompressStream
