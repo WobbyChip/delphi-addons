@@ -157,6 +157,9 @@ type
     dwDataSize: LongInt;
   end;
 
+type
+  TDownloadCallback = procedure(bytes: Int64);
+
 function IsWow64Process(hProcess: THandle; var Wow64Process: Boolean): Boolean; stdcall; external kernel32;
 function CheckTokenMembership(TokenHandle: THandle; SIdToCheck: PSID; var IsMember: Boolean): Boolean; StdCall; external AdvApi32;
 function NtQuerySystemInformation(SystemInformationClass: DWORD; SystemInformation: Pointer; SystemInformationLength: DWORD; ReturnLength: PDWORD): Cardinal; stdcall; external 'ntdll';
@@ -261,7 +264,7 @@ function GetPIDFromProcess(FileName: WideString): DWORD;
 procedure CompressStream(MemoryStream: TMemoryStream);
 procedure DecompressStream(MemoryStream: TMemoryStream);
 function WebFileSize(URL: WideString): Cardinal;
-function URLDownloadToStream(URL: WideString; Stream: TStream): Boolean;
+function URLDownloadToStream(URL: WideString; Stream: TStream; callback: TDownloadCallback): Boolean;
 function SaveResource(FileName, ResourceName: WideString; ResourceType: PChar): Boolean;
 function AddIconResource(FileName, Icon, ResourceName: WideString): Boolean;
 function AddResource(FileName, ResourceName: WideString; Stream: TStream; ResourceType: PChar; Language: Integer): Boolean;
@@ -1428,33 +1431,58 @@ end;
 
 
 //URLDownloadToStream
-function URLDownloadToStream(URL: WideString; Stream: TStream): Boolean;
+function URLDownloadToStream(URL: WideString; Stream: TStream; callback: TDownloadCallback): Boolean;
 const
-  BufferSize = 1024*10*10;
+  BUFFER_SIZE = 1024*10*10;
+  STREAM_SIZE = 1024*1024*10;
 var
   hSession, hURL: HInternet;
-  Buffer: array[1..BufferSize] of Byte;
+  Buffer: array[1..BUFFER_SIZE] of Byte;
+  MemoryStream: TMemoryStream;
   Origin: Cardinal;
   BufferLen: DWORD;
+  TotalBytes: Int64;
 begin
   Result := False;
   BufferLen := 0;
+  TotalBytes := 0;
   Stream.Position := 0;
 
-  if not InternetGetConnectedState(@Origin, 0) then Exit;
+  if not InternetGetConnectedState(@Origin, 0) then begin
+    if Assigned(callback) then callback(-1);
+    Exit;
+  end;
+
   hSession := InternetOpenW(PWideChar(WideParamStr(0)), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
   hURL := InternetOpenUrlW(hSession, PWideChar(URL), nil, 0, INTERNET_FLAG_NO_CACHE_WRITE, 0);
+  if Assigned(callback) then callback(0);
+
+  MemoryStream := TMemoryStream.Create;
 
   try
     repeat
       InternetReadFile(hURL, @Buffer, SizeOf(Buffer), BufferLen);
-      Stream.Write(Buffer, BufferLen);
+      MemoryStream.Write(Buffer, BufferLen);
+      TotalBytes := TotalBytes + BufferLen;
+
+      if (MemoryStream.Size >= STREAM_SIZE) then begin
+        Stream.Write(MemoryStream.Memory^, MemoryStream.Size);
+        MemoryStream.Clear;
+        MemoryStream.Position := 0;
+      end;
+
+      if Assigned(callback) then callback(TotalBytes);
       Application.ProcessMessages;
     until BufferLen = 0;
   except
     InternetCloseHandle(hURL);
   end;
 
+  if (MemoryStream.Size > 0) then begin
+    Stream.Write(MemoryStream.Memory^, MemoryStream.Size);
+  end;
+
+  MemoryStream.Free;
   Stream.Position := 0;
   InternetCloseHandle(hSession);
   Result := True;
