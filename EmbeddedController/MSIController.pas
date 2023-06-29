@@ -3,10 +3,10 @@ unit MSIController;
 interface
 
 uses
-  EmbeddedController;
+  Windows, EmbeddedController;
 
 const
-  EC_LOADED_RETRY = 200;
+  EC_LOADED_RETRY = 100;
   EC_WEBCAM_ADDRESS = $2E;
   EC_WEBCAM_ON = $4B;
   EC_WEBCAM_OFF = $49;
@@ -52,18 +52,21 @@ implementation
 
 constructor TMSIController.Create;
 var
-  i: Integer;
+  i, j, k: Integer;
   bDummy: Byte;
 begin
   inherited Create;
   EC := TEmbeddedController.Create;
   EC.retry := 5;
   hasEC := False;
+  j := 0; k := 0;
 
   for i := 1 to EC_LOADED_RETRY do begin
-    hasEC := EC.readByte(0, bDummy);
-    if hasEC then Break;
+    if (EC.readByte(0, bDummy)) then Inc(j) else Inc(k);
+    Sleep(1);
   end;
+
+  hasEC := (j > k);
 end;
 
 
