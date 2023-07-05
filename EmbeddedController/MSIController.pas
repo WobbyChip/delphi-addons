@@ -6,7 +6,7 @@ uses
   Windows, EmbeddedController;
 
 const
-  EC_LOADED_RETRY = 100;
+  EC_LOADED_RETRY = 20;
   EC_WEBCAM_ADDRESS = $2E;
   EC_WEBCAM_ON = $4B;
   EC_WEBCAM_OFF = $49;
@@ -62,8 +62,14 @@ begin
   j := 0; k := 0;
 
   for i := 1 to EC_LOADED_RETRY do begin
-    if (EC.readByte(0, bDummy)) then Inc(j) else Inc(k);
-    Sleep(1);
+    hasEC := EC.readByte(0, bDummy);
+    if hasEC then Break else Sleep(1);
+  end;
+
+  if (not hasEC) then Exit;
+
+  for i := 1 to EC_LOADED_RETRY do begin
+    if (self.GetCPUTemp > 0) then Inc(j) else Inc(k);
   end;
 
   hasEC := (j > k);
