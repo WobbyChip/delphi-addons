@@ -38,6 +38,7 @@ type
 
 const
   DDCCI_POWER_ADRRESS = $D6;
+  DDCCI_BRIGHTNESS_ADRRESS = $10;
   DDCCI_POWER_OFF = $05;
   DDCCI_POWER_ON = $01;
   DDCCI_MAX_RETRY = 20;
@@ -62,7 +63,7 @@ type
       function PowerOn(DeviceID: String): Boolean;
       function PowerOff(DeviceID: String): Boolean;
       function PowerToggle(DeviceID: String): Boolean;
-      function GetBrightness(DeviceID: String): Integer;
+      function GetBrightness(DeviceID: String): DWORD;
       function SetBrightness(DeviceID: String; Value: Integer): Boolean;
       function SetValue(DeviceID: String; Address: Byte; Value: DWORD): Boolean;
       function GetValue(DeviceID: String; Address: Byte): DWORD;
@@ -264,96 +265,62 @@ end;
 
 
 function TDDCCI.isSupported(DeviceID: String): Boolean;
-var
-  i: Variant;
-  j, k: DWORD;
 begin
-  Result := False;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
-  Result := GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, j, k);
+  Result := GetValue(DeviceID, DDCCI_POWER_ADRRESS) <> High(DWORD);
 end;
 
 
 function TDDCCI.PowerOn(DeviceID: String): Boolean;
-var
-  i: Variant;
 begin
-  Result := False;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
-  Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_ON);
+  Result := SetValue(DeviceID, DDCCI_POWER_ADRRESS, DDCCI_POWER_ON);
 end;
 
 
 function TDDCCI.PowerOff(DeviceID: String): Boolean;
-var
-  i: Variant;
 begin
-  Result := False;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
-  Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, DDCCI_POWER_OFF);
+  Result := SetValue(DeviceID, DDCCI_POWER_ADRRESS, DDCCI_POWER_OFF);
 end;
 
 
 function TDDCCI.PowerToggle(DeviceID: String): Boolean;
 var
-  i: Variant;
-  CurrentValue, MaximumValue: DWORD;
+  CurrentValue: DWORD;
 begin
   Result := False;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
-  GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, CurrentValue, MaximumValue);
-  Result := SetVCPFeature(i, DDCCI_POWER_ADRRESS, Q((CurrentValue <> DDCCI_POWER_ON), DDCCI_POWER_ON, DDCCI_POWER_OFF));
+  CurrentValue := GetValue(DeviceID, DDCCI_POWER_ADRRESS);
+  if (CurrentValue = High(DWORD)) then Exit;
+  Result := SetValue(DeviceID, DDCCI_POWER_ADRRESS, Q((CurrentValue <> DDCCI_POWER_ON), DDCCI_POWER_ON, DDCCI_POWER_OFF));
 end;
 
 
-function TDDCCI.GetBrightness(DeviceID: String): Integer;
+function TDDCCI.GetBrightness(DeviceID: String): DWORD;
 var
-  i: Variant;
-  MinimumValue, MaximumValue: DWORD;
-  CurrentValue: DWORD;
+  Brightness: DWORD;
 begin
-  Result := -1;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
-  if not GetMonitorBrightness(i, MinimumValue, CurrentValue, MaximumValue) then Exit;
-  Result := CurrentValue;
+  Result := High(DWORD);
+  Brightness := GetValue(DeviceID, DDCCI_BRIGHTNESS_ADRRESS);
+  if (Result <> Brightness) then Result := Brightness;
 end;
 
 
 function TDDCCI.SetBrightness(DeviceID: String; Value: Integer): Boolean;
-var
-  i: Variant;
 begin
-  Result := False;
-  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
-  if (i = DynamicData.Null) then Exit;
-
   if (Value < 0) then Value := 0;
   if (Value > 100) then Value := 100;
-  Result := SetMonitorBrightness(i, Value);
+  Result := SetValue(DeviceID, DDCCI_BRIGHTNESS_ADRRESS, Value);
 end;
 
 
 function TDDCCI.SetValue(DeviceID: String; Address: Byte; Value: DWORD): Boolean;
 var
   i: Variant;
-  CurrentValue, MaximumValue, j: DWORD;
+  j: DWORD;
 begin
   Result := False;
   i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
   if (i = DynamicData.Null) then Exit;
 
   for j := 1 to DDCCI_MAX_RETRY do begin
-    GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, CurrentValue, MaximumValue);
     Result := SetVCPFeature(i, Address, Value);
     if Result then Break;
   end;
@@ -363,14 +330,17 @@ end;
 function TDDCCI.GetValue(DeviceID: String; Address: Byte): DWORD;
 var
   i: Variant;
-  CurrentValue, MaximumValue: DWORD;
+  CurrentValue, MaximumValue, j: DWORD;
+  b: Boolean;
 begin
-  Result := 0;
+  Result := High(DWORD);
   i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
   if (i = DynamicData.Null) then Exit;
 
-  GetVCPFeatureAndVCPFeatureReply(i, Address, nil, CurrentValue, MaximumValue);
-  Result := CurrentValue;
+  for j := 1 to DDCCI_MAX_RETRY do begin
+    b := GetVCPFeatureAndVCPFeatureReply(i, Address, nil, CurrentValue, MaximumValue);
+    if b then begin Result := CurrentValue; Break; end;
+  end;
 end;
 
 end.
