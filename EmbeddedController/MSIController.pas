@@ -70,6 +70,7 @@ begin
 
   for i := 1 to EC_LOADED_RETRY do begin
     if (self.GetCPUTemp > 0) then Inc(j) else Inc(k);
+    Sleep(1);
   end;
 
   hasEC := (j > k);

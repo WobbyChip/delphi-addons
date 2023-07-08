@@ -40,6 +40,7 @@ const
   DDCCI_POWER_ADRRESS = $D6;
   DDCCI_POWER_OFF = $05;
   DDCCI_POWER_ON = $01;
+  DDCCI_MAX_RETRY = 20;
 
 type
   TDDCCI = class
@@ -63,6 +64,8 @@ type
       function PowerToggle(DeviceID: String): Boolean;
       function GetBrightness(DeviceID: String): Integer;
       function SetBrightness(DeviceID: String; Value: Integer): Boolean;
+      function SetValue(DeviceID: String; Address: Byte; Value: DWORD): Boolean;
+      function GetValue(DeviceID: String; Address: Byte): DWORD;
     private
       DynamicData: TDynamicData;
     end;
@@ -337,6 +340,37 @@ begin
   if (Value < 0) then Value := 0;
   if (Value > 100) then Value := 100;
   Result := SetMonitorBrightness(i, Value);
+end;
+
+
+function TDDCCI.SetValue(DeviceID: String; Address: Byte; Value: DWORD): Boolean;
+var
+  i: Variant;
+  CurrentValue, MaximumValue, j: DWORD;
+begin
+  Result := False;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
+
+  for j := 1 to DDCCI_MAX_RETRY do begin
+    GetVCPFeatureAndVCPFeatureReply(i, DDCCI_POWER_ADRRESS, nil, CurrentValue, MaximumValue);
+    Result := SetVCPFeature(i, Address, Value);
+    if Result then Break;
+  end;
+end;
+
+
+function TDDCCI.GetValue(DeviceID: String; Address: Byte): DWORD;
+var
+  i: Variant;
+  CurrentValue, MaximumValue: DWORD;
+begin
+  Result := 0;
+  i := DynamicData.FindValue(0, 'DeviceID', DeviceID, 'hPhysicalMonitor');
+  if (i = DynamicData.Null) then Exit;
+
+  GetVCPFeatureAndVCPFeatureReply(i, Address, nil, CurrentValue, MaximumValue);
+  Result := CurrentValue;
 end;
 
 end.
