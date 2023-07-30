@@ -97,7 +97,7 @@ var
 begin
   Result := '';
   AllocInvisibleConsole('', 0);
-  hProcess := WideWinExec(CommandLine, SW_HIDE);
+  hProcess := WideWinExec(CommandLine, SW_HIDE).hProcess;
   WaitForSingleObject(hProcess, INFINITE);
   StdOutHandle := GetStdHandle(STD_OUTPUT_HANDLE);
   GetConsoleScreenBufferInfo(StdOutHandle, ConsoleInfo);
