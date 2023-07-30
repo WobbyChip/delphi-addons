@@ -9,6 +9,9 @@ uses
   PNGImage, acWorkRes, MiniMod, NetBlock, MP3Utils, MMReg, AudioInfo, ACMConvertor, WaveStreamWrite;
 
 type
+  TArrayOfDWORD = array of DWORD;
+
+type
   NTSTATUS = LongInt;
   TProcFunction = function(ProcHandle: THandle): NTSTATUS; stdcall;
 
@@ -171,6 +174,7 @@ function GetFontResourceInfoW(lpszFilename: PWideChar; var cbBuffer: DWORD; lpBu
 function GetConsoleWindow: HWND; stdcall; external kernel32;
 function AttachConsole(dwProcessID: Integer): Boolean; stdcall; external kernel32;
 function GetTickCount64: Int64; stdcall; external kernel32;
+function GetProcessId(hProcess: THandle): DWORD; external kernel32;
 
 const
   CResFileHeader: array [0..7] of Cardinal = ($00000000, $00000020, $0000FFFF, $0000FFFF, $00000000, $00000000, $00000000, $00000000);
@@ -247,7 +251,8 @@ procedure WakeOnLan(IP, AMacAddress: String; Port: Integer);
 function ExecuteWait(FileName, Params: WideString; nShow: Integer): Cardinal;
 function ExecuteProcess(FileName, Params: WideString; nShow: Integer): THandle;
 function ExecuteProcessAsAdmin(FileName, Params: WideString; nShow: Integer): THandle;
-function WideWinExec(CommandLine: WideString; nShow: Integer): Cardinal;
+function WideWinExec(CommandLine: WideString; nShow: Integer): TProcessInformation;
+function GetProcessChildren(processId: DWORD): TArrayOfDWORD;
 function KillTask(FileName: WideString): Boolean;
 function ProcessExists(FileName: WideString): Boolean;
 function PIDExists(PID: DWORD): Boolean;
@@ -1084,7 +1089,7 @@ end;
 
 
 //WideWinExec
-function WideWinExec(CommandLine: WideString; nShow: Integer): Cardinal;
+function WideWinExec(CommandLine: WideString; nShow: Integer): TProcessInformation;
 var
   StartUpInfo: TStartUpInfo;
   ProcInfo: TProcessInformation;
@@ -1094,9 +1099,32 @@ begin
   StartUpInfo.wShowWindow := nShow;
   StartUpInfo.dwFlags := STARTF_USESHOWWINDOW;
   Windows.CreateProcessW(nil, PWideChar(CommandLine), nil, nil, True, NORMAL_PRIORITY_CLASS, nil, nil, StartUpInfo, ProcInfo);
-  Result := ProcInfo.hProcess;
+  Result := ProcInfo;
 end;
 //WideWinExec
+
+
+//GetProcessChildren
+function GetProcessChildren(processId: DWORD): TArrayOfDWORD;
+var
+  ContinueLoop: Boolean;
+  SnapshotHandle: THandle;
+  ProcessEntry: TProcessEntry32W;
+begin
+  SetLength(Result, 0);
+  SnapshotHandle := CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  ProcessEntry.dwSize := SizeOf(ProcessEntry);
+  ContinueLoop := Process32FirstW(SnapshotHandle, ProcessEntry);
+
+  while ContinueLoop do begin
+    if (ProcessEntry.th32ParentProcessID = processId) then SetLength(Result, Length(Result)+1);
+    if (ProcessEntry.th32ParentProcessID = processId) then Result[Length(Result)-1] := ProcessEntry.th32ProcessID;
+    ContinueLoop := Process32NextW(SnapshotHandle, ProcessEntry);
+  end;
+
+  CloseHandle(SnapshotHandle);
+end;
+//GetProcessChildren
 
 
 //KillTask
@@ -1350,7 +1378,7 @@ end;
 //GetPIDFromHWND
 function GetPIDFromHWND(hwnd: HWND): DWORD;
 begin
-  GetWindowThreadProcessId(hwnd, Result);
+  if (GetWindowThreadProcessId(hwnd, Result) = 0) then Result := 0;
 end;
 //GetPIDFromHWND
 
@@ -1522,6 +1550,7 @@ begin
   Result := (hResource <> 0) and (hGlobal <> 0);
   if not Result then Exit;
 
+  if not WideDirectoryExists(WideExtractFileDir(FileName)) then WideForceDirectories(WideExtractFileDir(FileName));
   hFile := CreateFileW(PWideChar(FileName), GENERIC_WRITE, FILE_SHARE_WRITE, nil, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
   SetFilePointer(hFile, 0, nil, FILE_BEGIN);
   SetEndOfFile(hFile);
