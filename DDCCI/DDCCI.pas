@@ -52,10 +52,13 @@ type
 
       function GetMonitorCount: Integer;
       function GetIndexByDeviceID(DeviceID: String): Integer;
+      function GetIndexByDevicePath(DevicePath: String): Integer;
       function GetFriendlyName(Index: Integer): String;
       function GetDeviceName(Index: Integer): String;
       function GetDeviceString(Index: Integer): String;
       function GetDeviceID(Index: Integer): String;
+      function GetDeviceNum(Index: Integer): String;
+      function GetDevicePath(Index: Integer): String;
       function GetDeviceKey(Index: Integer): String;
       function GetPhysicalMonitorHandle(Index: Integer): HMONITOR;
 
@@ -134,6 +137,7 @@ var
   MonitorInfo: TMonitorInfoEx;
   monitorIndex: Integer;
   szDevice, FriendlyName: String;
+  DeviceID, DevicePath, DeviceNum: String;
   pMonitorsCount: DWORD;
   pMonitors: PPhysicalMonitor;
   hPhysicalMonitor: HMONITOR;
@@ -146,7 +150,10 @@ begin
 
   while EnumDisplayDevicesW(PWideChar(WideString(szDevice)), monitorIndex, md, 0) do begin
     FriendlyName := GetMonitorFriendlyName(md.DeviceID);
-    TDynamicData(Data).CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceID', 'DeviceKey', 'hPhysicalMonitor'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceID), String(md.DeviceKey), -1]);
+    DeviceID := String(md.DeviceID);
+    DevicePath := Copy(DeviceID, 0, Length(DeviceID)-5);
+    DeviceNum := Copy(DeviceID, Length(DeviceID)-3, Length(DeviceID));
+    TDynamicData(Data).CreateData(-1, -1, ['FriendlyName', 'DeviceName', 'DeviceString', 'DeviceKey', 'DeviceID', 'DevicePath', 'DeviceNum', 'hPhysicalMonitor'], [FriendlyName, String(md.DeviceName), String(md.DeviceString), String(md.DeviceKey), DeviceID, DevicePath, DeviceNum, -1]);
     Inc(monitorIndex);
   end;
 
@@ -216,6 +223,12 @@ begin
 end;
 
 
+function TDDCCI.GetIndexByDevicePath(DevicePath: String): Integer;
+begin
+  Result := DynamicData.FindIndex(0, 'DevicePath', DevicePath);
+end;
+
+
 function TDDCCI.GetFriendlyName(Index: Integer): String;
 begin
   Result := '';
@@ -245,6 +258,22 @@ begin
   Result := '';
   if (Index >= DynamicData.GetLength) or (Index < 0) then Exit;
   Result := DynamicData.GetValue(Index, 'DeviceID');
+end;
+
+
+function TDDCCI.GetDeviceNum(Index: Integer): String;
+begin
+  Result := '';
+  if (Index >= DynamicData.GetLength) or (Index < 0) then Exit;
+  Result := DynamicData.GetValue(Index, 'DeviceNum');
+end;
+
+
+function TDDCCI.GetDevicePath(Index: Integer): String;
+begin
+  Result := '';
+  if (Index >= DynamicData.GetLength) or (Index < 0) then Exit;
+  Result := DynamicData.GetValue(Index, 'DevicePath');
 end;
 
 
